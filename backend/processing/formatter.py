@@ -33,6 +33,9 @@ def generate_word_files(questions, metadata, session_id):
     tf_answers = []
     match_answers = []
 
+    # Set random seed based on current time to ensure different randomization each time
+    random.seed()
+
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
         mc_questions.append({
             "no": i,
@@ -52,8 +55,20 @@ def generate_word_files(questions, metadata, session_id):
         tf_answers.append({"no": i, "ans": q["answer"]})
 
     for i, q in enumerate(filtered.get("matching", []), 1):
-        match_questions.append({"no": i, "question": q["question"]})
-        match_answers.append({"no": i, "ans": q["answer"]})
+        # Get the choices and create a randomized version for column B
+        choices = q["answer"] if isinstance(q["answer"], list) else [q["answer"]]
+        # Create a new list with indices and shuffle them
+        indices = list(range(len(choices)))
+        random.shuffle(indices)
+        randomized_choices = [choices[i] for i in indices]
+        
+        match_questions.append({
+            "no": i,
+            "question": q["question"],
+            "column_a": choices,  # Original order for column A
+            "column_b": randomized_choices  # Randomized order for column B
+        })
+        match_answers.append({"no": i, "ans": choices})  # Store original order as answer
 
     # Step 3: Prepare context for rendering
     context = {
