@@ -70,10 +70,13 @@ def parse_excel(file):
     # Matching
     df_match = xls.parse("Matching")
     for _, row in df_match.iterrows():
+        pre_ans = row.get("pre_ans", "")
+        # Split the pre_ans by newline or semicolon to get individual choices
+        choices = [choice.strip() for choice in pre_ans.replace('\n', ';').split(';') if choice.strip()]
         all_questions.append({
             "type": "matching",
             "question": row.get("question", ""),
-            "answer": row.get("pre_ans", ""),
+            "answer": choices,  # Store as list of choices
             "category": row.get("category", "")
         })
 
