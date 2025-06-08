@@ -50,7 +50,9 @@ export default function QuestionEditor({ questions, onQuestionsChange }: Questio
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Stack direction="row" spacing={1}>
               <Chip
-                label={question.type}
+                label={question.type.toLowerCase() === 'written question' 
+                  ? `${question.q_type?.toLowerCase() || 'short'} question`
+                  : question.type}
                 color="primary"
                 variant="outlined"
                 size="small"
@@ -100,19 +102,32 @@ export default function QuestionEditor({ questions, onQuestionsChange }: Questio
             )}
 
             <FormControl fullWidth>
-              <InputLabel>Answer</InputLabel>
               {question.type.toLowerCase() === 'multiple choice' ? (
-                <Select
-                  value={question.answer || ''}
-                  onChange={(e) => handleQuestionChange(index, 'answer', e.target.value)}
-                  label="Answer"
-                >
-                  {['A', 'B', 'C', 'D', 'E'].map((choice) => (
-                    <MenuItem key={`answer-${choice}`} value={choice}>
-                      {choice}
-                    </MenuItem>
-                  ))}
-                </Select>
+                <>
+                  <InputLabel>Answer</InputLabel>
+                  <Select
+                    value={(question.answer || '').toUpperCase()}
+                    onChange={(e) => handleQuestionChange(index, 'answer', e.target.value)}
+                    label="Answer"
+                  >
+                    {['A', 'B', 'C', 'D', 'E'].map((choice) => (
+                      <MenuItem key={`answer-${choice}`} value={choice}>
+                        {choice}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </>
+              ) : question.type.toLowerCase() === 'written question' ? (
+                  <TextField
+                    value={question.answer || ''}
+                    onChange={(e) => handleQuestionChange(index, 'answer', e.target.value)}
+                    fullWidth
+                    variant="outlined"
+                    label="Answer"
+                    multiline
+                    minRows={question.q_type?.toLowerCase() === 'long' ? 4 : 1}
+                    maxRows={question.q_type?.toLowerCase() === 'long' ? 8 : 4}
+                  />
               ) : (
                 <TextField
                   value={question.answer || ''}
@@ -124,20 +139,6 @@ export default function QuestionEditor({ questions, onQuestionsChange }: Questio
               )}
             </FormControl>
 
-            {question.type.toLowerCase() === 'multiple choice' && (
-              <FormControl fullWidth>
-                <InputLabel>Is Long Question?</InputLabel>
-                <Select
-                  value={question.is_long ? 'true' : 'false'}
-                  onChange={(e) => handleQuestionChange(index, 'is_long', e.target.value === 'true')}
-                  label="Is Long Question?"
-                >
-                  <MenuItem value="false">No</MenuItem>
-                  <MenuItem value="true">Yes</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-
             {question.image && (
               <TextField
                 label="Image Path"
@@ -147,6 +148,7 @@ export default function QuestionEditor({ questions, onQuestionsChange }: Questio
                 variant="outlined"
               />
             )}
+
           </Stack>
         </QuestionPaper>
       ))}

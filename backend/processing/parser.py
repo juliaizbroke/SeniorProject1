@@ -4,38 +4,75 @@ import pandas as pd
 from io import BytesIO
 import datetime
 
+def format_date(date_str):
+    try:
+        # Parse the date string
+        date_obj = pd.to_datetime(date_str)
+        # Format the date with ordinal suffix
+        day = date_obj.day
+        suffix = 'th' if 11 <= day <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(day % 10, 'th')
+        return f"{day}{suffix} {date_obj.strftime('%B %Y')}"
+    except:
+        return date_str
+
+def format_time(time_str):
+    try:
+        # Parse the time string
+        time_obj = datetime.datetime.strptime(time_str, '%H:%M:%S')
+        # Format in 12-hour format with AM/PM
+        return time_obj.strftime('%I:%M %p')
+    except:
+        return time_str
+
 def parse_excel(file):
     xls = pd.ExcelFile(file)
 
     # ---- Extract Metadata from 'Info' ----
     info_sheet = xls.parse("Info", header=None)
     metadata = {
-        "year": None,
-        "date": None,
-        "exam_type": "Midterm",  # default fallback
-        "semester": None,
+        "year": "",
+        "semester": "",
+        "exam_type": "",
+        "department": "",
+        "program_type": "",
+        "subject_code": "",
+        "subject_name": "",
         "lecturer": "",
-        "subject": "",
-        "program_type": "Regular",
-        "department": "AU"
+        "date": "",
+        "time": "",
+        "exam_type_code": ""
     }
-    for i in range(len(info_sheet)):  # Loop through rows
+
+    for i in range(len(info_sheet)):
         row = info_sheet.iloc[i]
         for cell in row:
             if isinstance(cell, str):
                 cell_l = cell.lower()
                 if "year" in cell_l:
-                    metadata["year"] = row[row[row == cell].index[0] + 1]
-                elif "today" in cell_l or "date" in cell_l:
-                    metadata["date"] = row[row[row == cell].index[0] + 1]
-                elif "lecturer" in cell_l:
-                    metadata["lecturer"] = row[row[row == cell].index[0] + 1]
-                elif "subject" in cell_l:
-                    metadata["subject"] = row[row[row == cell].index[0] + 1]
-                elif "exam type" in cell_l:
-                    metadata["exam_type"] = row[row[row == cell].index[0] + 1]
+                    metadata["year"] = str(row[row[row == cell].index[0] + 1])
                 elif "semester" in cell_l:
-                    metadata["semester"] = row[row[row == cell].index[0] + 1]
+                    metadata["semester"] = str(row[row[row == cell].index[0] + 1])
+                elif "exam type" in cell_l:
+                    metadata["exam_type"] = str(row[row[row == cell].index[0] + 1])
+                elif "department" in cell_l:
+                    metadata["department"] = str(row[row[row == cell].index[0] + 1])
+                elif "program type" in cell_l:
+                    metadata["program_type"] = str(row[row[row == cell].index[0] + 1])
+                elif "subject code" in cell_l:
+                    metadata["subject_code"] = str(row[row[row == cell].index[0] + 1])
+                elif "subject name" in cell_l:
+                    metadata["subject_name"] = str(row[row[row == cell].index[0] + 1])
+                elif "lecturer" in cell_l:
+                    metadata["lecturer"] = str(row[row[row == cell].index[0] + 1])
+                elif "date" in cell_l:
+                    metadata["date"] = format_date(str(row[row[row == cell].index[0] + 1]))
+                elif "time" in cell_l:
+                    time_start = format_time(str(row[row[row == cell].index[0] + 1]))
+                    time_end = format_time(str(row[row[row == cell].index[0] + 2]))
+                    metadata["time"] = f"{time_start} - {time_end}"
+
+    # Construct exam_type_code after all fields are populated
+    metadata["exam_type_code"] = f"{metadata['exam_type']}_{metadata['semester']}/{metadata['year']}"
 
     # ---- Extract Questions ----
     all_questions = []
@@ -43,6 +80,10 @@ def parse_excel(file):
     # Multiple Choice
     df_mc = xls.parse("MultipleChoice")
     for _, row in df_mc.iterrows():
+        # Check if any option has length >= 20
+        options = [str(row.get(opt, "")) for opt in ['a', 'b', 'c', 'd', 'e']]
+        is_long = any(len(opt) >= 20 for opt in options)
+        
         all_questions.append({
             "type": "multiple choice",
             "question": row.get("question", ""),
@@ -53,8 +94,8 @@ def parse_excel(file):
             "e": row.get("e", ""),
             "answer": row.get("ans", ""),
             "category": row.get("category", ""),
-            "image": row.get("myimage", ""),
-            "is_long": bool(row.get("is_long", False))
+            "image": row.get("image", ""),
+            "is_long": is_long
         })
 
     # True/False
@@ -70,13 +111,21 @@ def parse_excel(file):
     # Matching
     df_match = xls.parse("Matching")
     for _, row in df_match.iterrows():
-        pre_ans = row.get("pre_ans", "")
-        # Split the pre_ans by newline or semicolon to get individual choices
-        choices = [choice.strip() for choice in pre_ans.replace('\n', ';').split(';') if choice.strip()]
-        all_questions.append({
+       all_questions.append({
             "type": "matching",
             "question": row.get("question", ""),
-            "answer": choices,  # Store as list of choices
+            "answer": row.get("ans", ""),
+            "category": row.get("category", "")
+        })
+
+    # Written Question
+    df_written = xls.parse("WrittenQuestion")
+    for _, row in df_written.iterrows():
+        all_questions.append({
+            "type": "written question",
+            "question": row.get("question", ""),
+            "answer": row.get("ans", ""),
+            "q_type": row.get("q_type", ""),
             "category": row.get("category", "")
         })
 

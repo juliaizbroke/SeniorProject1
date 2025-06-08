@@ -13,18 +13,22 @@ export interface Question {
   image?: string;
   // True/False specific fields
   // Matching specific fields
-  pre_ans?: string;
+  // Written answer specific fields
+  q_type?: string;
 }
 
 export interface QuestionMetadata {
-  year: string | null;
-  date: string | null;
+  year: string;
+  semester: string;
   exam_type: string;
-  semester: string | null;
-  lecturer: string;
-  subject: string;
-  program_type: string;
+  exam_type_code: string;
   department: string;
+  program_type: string;
+  subject_code: string;
+  subject_name: string;
+  lecturer: string;
+  date: string;
+  time: string;
   selection_settings: {
     [key: string]: {
       count: number;
