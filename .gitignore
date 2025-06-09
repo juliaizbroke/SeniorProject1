@@ -1,0 +1,17 @@
+# Python virtual environment
+venv/
+backend/venv/
+__pycache__/
+*.pyc
+
+# Node - fallback in case
+node_modules/
+*.log
+
+# Excel temp files
+~$*.xlsx
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db

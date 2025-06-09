@@ -68,7 +68,7 @@ def generate_word_files(questions, metadata, session_id):
             "column_a": choices,  # Original order for column A
             "column_b": randomized_choices  # Randomized order for column B
         })
-        match_answers.append({"no": i, "ans": choices})  # Store original order as answer
+        match_answers.append({"no": i, "ans": ", ".join(choices)})  # Store original order as answer
 
     # Step 3: Prepare context for rendering
     context = {
@@ -82,6 +82,9 @@ def generate_word_files(questions, metadata, session_id):
         "mcquestions": mc_questions,
         "tfquestions": tf_questions,
         "matchingquestions": match_questions,
+        "mcanswers": mc_answers,
+        "tfanswers": tf_answers,
+        "matchanswers": match_answers
     }
 
     # Step 4: Render Word files

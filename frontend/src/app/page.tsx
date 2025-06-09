@@ -4,12 +4,12 @@ import { useState } from 'react';
 import Logo from '../components/Logo';
 import FileUpload from '../components/FileUpload';
 import QuestionEditor from '../components/QuestionEditor';
-import { Question, ExamMetadata, UploadResponse, GenerateResponse } from '../types';
+import { Question, QuestionMetadata, UploadResponse, GenerateResponse } from '../types';
 import { uploadExcel, generateExam, getDownloadUrl } from '../utils/api';
 
 export default function Home() {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [metadata, setMetadata] = useState<ExamMetadata | null>(null);
+  const [metadata, setMetadata] = useState<QuestionMetadata | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
   const [downloadLinks, setDownloadLinks] = useState<GenerateResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,8 +40,7 @@ export default function Home() {
       const response = await generateExam({
         session_id: sessionId,
         questions,
-        metadata,
-        settings: {} // Add settings if needed
+        metadata
       });
       setDownloadLinks(response);
     } catch (err) {
@@ -73,23 +72,51 @@ export default function Home() {
           <div className="space-y-8">
             {metadata && (
               <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h2 className="text-xl font-semibold mb-4">Exam Details</h2>
-                <div className="grid grid-cols-2 gap-4">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">Exam Details</h2>
+                <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Subject</p>
-                    <p className="font-medium">{metadata.subject}</p>
+                    <p className="text-sm text-gray-500 mb-1">Year</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.year}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Lecturer</p>
-                    <p className="font-medium">{metadata.lecturer}</p>
+                    <p className="text-sm text-gray-500 mb-1">Semester</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.semester}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Date</p>
-                    <p className="font-medium">{metadata.date}</p>
+                    <p className="text-sm text-gray-500 mb-1">Exam Type</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.exam_type}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Duration</p>
-                    <p className="font-medium">{metadata.duration}</p>
+                    <p className="text-sm text-gray-500 mb-1">Exam Type Code</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.exam_type}_{metadata.semester}/{metadata.year}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Department</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.department}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Program Type</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.program_type}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Subject Code</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.subject_code}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Subject Name</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.subject_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Lecturer</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.lecturer}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Date</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.date}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 mb-1">Time</p>
+                    <p className="text-lg font-semibold text-gray-800">{metadata.time}</p>
                   </div>
                 </div>
               </div>
