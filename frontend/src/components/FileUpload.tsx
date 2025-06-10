@@ -2,10 +2,10 @@ import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Box, Typography, Paper } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DescriptionIcon from '@mui/icons-material/Description';
 
-interface FileUploadProps {
-  onUpload: (file: File) => void;
+interface FileSelectProps {
+  onFileSelect: (file: File) => void;
 }
 
 const UploadBox = styled(Paper)(({ theme }) => ({
@@ -17,17 +17,17 @@ const UploadBox = styled(Paper)(({ theme }) => ({
   cursor: 'pointer',
   transition: 'all 0.3s ease-in-out',
   '&:hover': {
-    borderColor: theme.palette.primary.main,
+    borderColor: "#1E1E1E",
     backgroundColor: theme.palette.action.hover,
   },
 }));
 
-export default function FileUpload({ onUpload }: FileUploadProps) {
+export default function FileUpload({ onFileSelect }: FileSelectProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
     if (acceptedFiles.length > 0) {
-      onUpload(acceptedFiles[0]);
+      onFileSelect(acceptedFiles[0]);
     }
-  }, [onUpload]);
+  }, [onFileSelect]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -48,20 +48,23 @@ export default function FileUpload({ onUpload }: FileUploadProps) {
     >
       <input {...getInputProps()} />
       <Box sx={{ color: 'text.secondary' }}>
-        <CloudUploadIcon sx={{ fontSize: 48, mb: 2, color: 'primary.main' }} />
+        <DescriptionIcon sx={{ fontSize: 48, mb: 2 }} />
         {isDragActive ? (
           <Typography variant="body1">
             Drop the Excel file here...
           </Typography>
         ) : (
           <Box>
-            <Typography variant="body1" sx={{ mb: 1 }}>
-              Drag and drop your Excel file here, or click to select
+            <Typography variant="body1" sx={{color: "#1E1E1E" }}>
+              Drag and drop your Excel file here
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{mb: 1, color: "#757575" }} >
+              or click to browse your file
+            </Typography>
+            <Typography variant="body2" color="#757575">
               (Only .xlsx or .xls files are accepted)
             </Typography>
-          </Box>
+          </Box>  
         )}
       </Box>
     </UploadBox>
