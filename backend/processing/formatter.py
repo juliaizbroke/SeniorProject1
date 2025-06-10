@@ -12,7 +12,8 @@ def filter_and_randomize(questions, settings):
     selected = {
         "multiple choice": [],
         "true/false": [],
-        "matching": []
+        "matching": [],
+        "written question": []
     }
     for qtype in selected:
         qset = [q for q in questions if q["type"] == qtype]
@@ -28,10 +29,14 @@ def generate_word_files(questions, metadata, session_id):
     mc_questions = []
     tf_questions = []
     match_questions = []
+    sq_questions = []
+    lq_questions = []
 
     mc_answers = []
     tf_answers = []
     match_answers = []
+    sq_answers = []
+    lq_answers = []
 
     # Set random seed based on current time to ensure different randomization each time
     random.seed()
@@ -70,6 +75,20 @@ def generate_word_files(questions, metadata, session_id):
         })
         match_answers.append({"no": i, "ans": ", ".join(choices)})  # Store original order as answer
 
+    # Separate counters for short and long questions
+    sq_counter = 1
+    lq_counter = 1
+
+    for q in filtered.get("written question", []):
+        if q["q_type"] == "short":
+            sq_questions.append({"no": sq_counter, "question": q["question"]})
+            sq_answers.append({"no": sq_counter, "ans": q["answer"]})
+            sq_counter += 1
+        elif q["q_type"] == "long":
+            lq_questions.append({"no": lq_counter, "question": q["question"]})
+            lq_answers.append({"no": lq_counter, "ans": q["answer"]})
+            lq_counter += 1
+
     # Step 3: Prepare context for rendering
     context = {
         "department": metadata.get("department", "AU"),
@@ -77,14 +96,18 @@ def generate_word_files(questions, metadata, session_id):
         "mc_no": len(mc_questions),
         "tf_no": len(tf_questions),
         "match_no": len(match_questions),
-        "total_no": len(mc_questions) + len(tf_questions) + len(match_questions),
+        "sq_no": len(sq_questions),
+        "lq_no": len(lq_questions),
+        "total_no": len(mc_questions) + len(tf_questions) + len(match_questions) + len(sq_questions) + len(lq_questions),
         "percent": 100,
         "mcquestions": mc_questions,
         "tfquestions": tf_questions,
         "matchingquestions": match_questions,
+        "shortquestions": sq_questions,
+        "longquestions": lq_questions,
         "mcanswers": mc_answers,
         "tfanswers": tf_answers,
-        "matchanswers": match_answers
+        "matchanswers": match_answers,
     }
 
     # Step 4: Render Word files
