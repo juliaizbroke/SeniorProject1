@@ -1,21 +1,40 @@
 import { UploadResponse, GenerateRequest, GenerateResponse } from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+export async function testApiConnection(): Promise<boolean> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/`, {
+      method: 'GET',
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('API connection test failed:', error);
+    return false;
+  }
+}
 
 export async function uploadExcel(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${API_BASE_URL}/upload`, {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    throw new Error('Failed to upload file');
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Upload failed:', response.status, errorText);
+      throw new Error(`Failed to upload file: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Network error during upload:', error);
+    throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-
-  return response.json();
 }
 
 export async function generateExam(data: GenerateRequest): Promise<GenerateResponse> {
