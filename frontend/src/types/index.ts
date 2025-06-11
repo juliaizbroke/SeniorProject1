@@ -70,4 +70,5 @@ export interface GenerateRequest {
 export interface GenerateResponse {
   exam_url: string;
   key_url: string;
-} 
+  expires_in_minutes: number;
+}
