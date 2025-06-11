@@ -55,4 +55,34 @@ export async function generateExam(data: GenerateRequest): Promise<GenerateRespo
 
 export function getDownloadUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
-} 
+}
+
+export async function cleanupSessionFiles(sessionId: string): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cleanup/${sessionId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to cleanup files');
+    }
+  } catch (error) {
+    console.error('Error cleaning up files:', error);
+    throw error;
+  }
+}
+
+export async function triggerManualCleanup(): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cleanup`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to trigger cleanup');
+    }
+  } catch (error) {
+    console.error('Error triggering cleanup:', error);
+    throw error;
+  }
+}
