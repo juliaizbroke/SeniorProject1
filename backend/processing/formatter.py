@@ -57,23 +57,36 @@ def generate_word_files(questions, metadata, session_id):
 
     for i, q in enumerate(filtered.get("true/false", []), 1):
         tf_questions.append({"no": i, "question": q["question"]})
-        tf_answers.append({"no": i, "ans": q["answer"]})
-
-    for i, q in enumerate(filtered.get("matching", []), 1):
-        # Get the choices and create a randomized version for column B
-        choices = q["answer"] if isinstance(q["answer"], list) else [q["answer"]]
-        # Create a new list with indices and shuffle them
-        indices = list(range(len(choices)))
-        random.shuffle(indices)
-        randomized_choices = [choices[i] for i in indices]
+        tf_answers.append({"no": i, "ans": q["answer"]})    # For matching questions, we'll group them all into one matching exercise
+    matching_questions = filtered.get("matching", [])
+    if matching_questions:
+        # Extract all questions and answers
+        questions_list = []
+        answers_list = []
         
+        for q in matching_questions:
+            questions_list.append(q["question"])
+            answers_list.append(q["answer"])
+        
+        # Create a copy of answers and shuffle them for column B
+        shuffled_answers = answers_list.copy()
+        random.shuffle(shuffled_answers)
+        
+        # Add a single matching question with all items
         match_questions.append({
-            "no": i,
-            "question": q["question"],
-            "column_a": choices,  # Original order for column A
-            "column_b": randomized_choices  # Randomized order for column B
+            "no": 1,
+            "question": "Match the following",
+            "column_a": questions_list,  # All questions in column A
+            "column_b": shuffled_answers  # All answers shuffled in column B
         })
-        match_answers.append({"no": i, "ans": ", ".join(choices)})  # Store original order as answer
+        
+        # Create answer key mapping
+        answer_mapping = []
+        for i, original_answer in enumerate(answers_list):
+            answer_idx = shuffled_answers.index(original_answer)
+            answer_mapping.append(f"{i+1}-{chr(65+answer_idx)}")
+            
+        match_answers.append({"no": 1, "ans": ", ".join(answer_mapping)})  # Store mapping as answer
 
     # Separate counters for short and long questions
     sq_counter = 1
