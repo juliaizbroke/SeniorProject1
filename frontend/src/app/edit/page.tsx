@@ -2,20 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Box,
-  Typography,
-  Button,
-  Tab,
-  Tabs,
-  Divider,
-  Snackbar,
-  Alert
-} from "@mui/material";
+import Logo from "../../components/Logo";
 import QuestionEditor from "../../components/QuestionEditor";
-import Navbar from "../../components/Navbar";
-import { Question, QuestionMetadata } from "../../types";
-import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
+import { Question, QuestionMetadata, GenerateResponse } from "../../types";
+import { generateExam, getDownloadUrl } from "../../utils/api";
+
 export default function EditPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [allQuestions, setAllQuestions] = useState<Question[]>([]); // Store full pool for shuffling
@@ -23,16 +14,11 @@ export default function EditPage() {
   const [metadata, setMetadata] = useState<QuestionMetadata | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sessionId, setSessionId] = useState<string>("");
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error' | 'info' | 'warning'
-  });  
-  
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [tabIndex, setTabIndex] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [lockRefreshTrigger, setLockRefreshTrigger] = useState(0);useEffect(() => {
+  const [downloadLinks, setDownloadLinks] = useState<GenerateResponse | null>(null);
+  useEffect(() => {
     const q = localStorage.getItem("questions");
     const allQ = localStorage.getItem("allQuestions"); // Get full pool if available
     const m = localStorage.getItem("metadata");
@@ -61,196 +47,133 @@ export default function EditPage() {
       router.replace("/");
     }
   }, [router]);
-  // Function to get tab label based on index
-  const getTabLabel = (index: number) => {
-    const tabs = ["Multiple Choice", "True/False", "Matching", "Written"];
-    return tabs[index] || "Multiple Choice";
-  };
-  // Function to filter questions based on selected tab
-  const getFilteredQuestions = () => {
-    const questionType = getTabLabel(tabIndex);
-    
-    switch (questionType) {
-      case "Multiple Choice":
-        return questions.filter(q => q.type.toLowerCase() === "multiple choice");
-      case "True/False":
-        return questions.filter(q => q.type.toLowerCase() === "true/false");
-      case "Matching":
-        return questions.filter(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
-      case "Written":
-        return questions.filter(q => q.type.toLowerCase() === "written question");
-      default:
-        return questions.filter(q => q.type.toLowerCase() === "multiple choice");
-    }
-  };
-  // Function to get all questions of the current type (for shuffling pool)
-  const getAllQuestionsOfCurrentType = () => {
-    const questionType = getTabLabel(tabIndex);
-    
-    switch (questionType) {
-      case "Multiple Choice":
-        return allQuestions.filter(q => q.type.toLowerCase() === "multiple choice");
-      case "True/False":
-        return allQuestions.filter(q => q.type.toLowerCase() === "true/false");
-      case "Matching":
-        return allQuestions.filter(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
-      case "Written":
-        return allQuestions.filter(q => q.type.toLowerCase() === "written question");
-      default:
-        return allQuestions.filter(q => q.type.toLowerCase() === "multiple choice");
-    }
+
+  const handleStartOver = () => {
+    localStorage.clear();
+    router.push("/");
   };
 
-  // Function to update questions - need to merge back into the main array
-  const handleFilteredQuestionsChange = (filteredQuestions: Question[]) => {
-    const questionType = getTabLabel(tabIndex);
-    
-    // Create a new array with updated questions
-    const updatedQuestions = [...questions];
-    
-    // Remove old questions of this type (including fake answers for matching type)
-    const otherQuestions = updatedQuestions.filter(q => {
-      switch (questionType) {
-        case "Multiple Choice":
-          return q.type.toLowerCase() !== "multiple choice";
-        case "True/False":
-          return q.type.toLowerCase() !== "true/false";
-        case "Matching":
-          return q.type.toLowerCase() !== "matching" && q.type.toLowerCase() !== "fake answer";
-        case "Written":
-          return q.type.toLowerCase() !== "written question";
-        default:
-          return true;
-      }
-    });
-    
-    // Combine other questions with updated filtered questions
-    setQuestions([...otherQuestions, ...filteredQuestions]);
+  const handleGenerate = async () => {
+    if (!metadata || !sessionId) return;
+    try {
+      setLoading(true);
+      setError("");
+      const response: GenerateResponse = await generateExam({
+        session_id: sessionId,
+        questions,
+        metadata,
+      });
+      setDownloadLinks(response);
+    } catch (err) {
+      setError("Failed to generate exam documents.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
-
 
   return (
-    <Box sx={{ bgcolor: '#e3e9f7', minHeight: '100vh', color: '#222', position: 'relative', overflow: 'hidden' }}>
-      <Navbar />
-      <Box sx={{ px: 4, py: 6, position: 'relative', zIndex: 1 }}>
-        <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
-          <Typography
-            variant="h4"
-            sx={{ color: "#1a1a1a", fontWeight: 700, mb: 2, fontFamily: 'var(--sds-typography-title-hero-font-family)' }}
+    <main className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Logo />
+        </div>
+        {error && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+        {metadata && (
+          <div className="bg-white p-6 rounded-lg shadow-sm border mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Exam Details</h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Year</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.year}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Semester</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.semester}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Exam Type</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.exam_type}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Exam Type Code</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.exam_type}_{metadata.semester}/{metadata.year}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Department</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.department}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Program Type</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.program_type}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Subject Code</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.subject_code}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Subject Name</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.subject_name}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Lecturer</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.lecturer}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Date</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.date}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Time</p>
+                <p className="text-lg font-semibold text-gray-800">{metadata.time}</p>
+              </div>
+            </div>
+          </div>
+        )}
+        <QuestionEditor questions={questions} onQuestionsChange={setQuestions} />
+        <div className="flex justify-end gap-4 mt-8">
+          <button
+            onClick={handleStartOver}
+            className="px-4 py-2 text-gray-700 bg-white border rounded-lg hover:bg-gray-50"
           >
-            Edit Questions
-          </Typography>
-          <Typography
-            variant="subtitle1"
-            sx={{ color: "#333", fontWeight: 400, mb: 4, fontFamily: 'var(--sds-typography-title-hero-font-family)' }}
+            Start Over
+          </button>
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className={`px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            Review and edit your exam questions before generating the final documents.
-          </Typography>
-          <Box sx={{ mb: 4 }}>
-            <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.18)' }} />
-          </Box>
-          <Tabs
-            value={tabIndex}
-            onChange={(_, newValue) => setTabIndex(newValue)}
-            variant="fullWidth"
-            TabIndicatorProps={{
-              style: {
-                height: '35px',
-                borderRadius: 8,
-                margin: '5px 2px',
-                backgroundColor: '#1e3a8a',
-                transition: 'all 0.3s ease-in-out',
-                boxShadow: '0 2px 4px rgba(30,58,138,0.18)',
-              },
-            }}
-            sx={{
-              mb: 2,
-              bgcolor: 'rgba(255,255,255,0.12)',
-              borderRadius: 2,
-              minHeight: '20px',
-              '& .MuiTabs-flexContainer': {
-                position: 'relative',
-                zIndex: 1,
-              },
-              '& .MuiTab-root': {
-                zIndex: 2,
-                color: '#b0c4de',
-                '&.Mui-selected': {
-                  color: '#fff',
-                  fontWeight: 600,
-                },
-              },
-            }}
-          >
-            {['Multiple Choice', 'True/False', 'Matching', 'Written'].map((label) => (
-              <Tab
-                key={label}
-                label={label}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 500,
-                  minHeight: 'unset',
-                  m: '2px 1px',
-                  height: '40px',
-                  borderRadius: 1,
-                  transition: 'color 0.2s ease-in-out',
-                }}
-              />
-            ))}
-          </Tabs>
-          <QuestionEditor
-            questions={getFilteredQuestions()}
-            allQuestionsPool={getAllQuestionsOfCurrentType()}
-            onQuestionsChange={handleFilteredQuestionsChange}
-            forceRefreshLocks={lockRefreshTrigger}
-          />
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-              <Typography
-                variant="caption"
-                sx={{ color: '#333', fontStyle: 'italic', maxWidth: '300px', textAlign: 'right' }}
-              >
-                Review your questions and proceed to preview the exam structure before generating the final documents.
-              </Typography>
-              <Button
-                variant="contained"
-                onClick={() => {
-                  // Just navigate to preview page without generating files yet
-                  router.push('/preview');
-                }}
-                sx={{
-                  height: '60px',
-                  flexShrink: 0,
-                  borderRadius: '10px',
-                  border: '1px solid #1e3a8a',
-                  backgroundColor: '#1e3a8a',
-                  color: 'white',
-                  '&:hover': {
-                    backgroundColor: '#1e40af',
-                  },
-                }}
-              >
-                Continue to Preview
-                <TrendingFlatIcon sx={{ ml: 2 }} />
-              </Button>
-            </Box>
-          </Box>
-          <Snackbar
-            open={snackbar.open}
-            autoHideDuration={6000}
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-          >
-            <Alert
-              onClose={() => setSnackbar({ ...snackbar, open: false })}
-              severity={snackbar.severity}
-              sx={{ width: '100%' }}
-            >
-              {snackbar.message}
-            </Alert>
-          </Snackbar>
-        </Box>
-      </Box>
-    </Box>
+            {loading ? "Generating..." : "Generate Exam"}
+          </button>
+        </div>
+      </div>
+      {downloadLinks && (
+              <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                <h3 className="text-lg font-medium text-green-800 mb-4">
+                  Documents Generated Successfully!
+                </h3>
+                <div className="space-y-2">
+                  <a
+                    href={getDownloadUrl(downloadLinks.exam_url)}
+                    className="block px-4 py-2 text-blue-600 bg-white border rounded-lg hover:bg-blue-50"
+                    download
+                  >
+                    Download Exam Paper
+                  </a>
+                  <a
+                    href={getDownloadUrl(downloadLinks.key_url)}
+                    className="block px-4 py-2 text-blue-600 bg-white border rounded-lg hover:bg-blue-50"
+                    download
+                  >
+                    Download Answer Key
+                  </a>
+                </div>
+              </div>
+            )}
+    </main>
   );
 }
