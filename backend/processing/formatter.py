@@ -121,6 +121,8 @@ def generate_word_files(questions, metadata, session_id):
         "mcanswers": mc_answers,
         "tfanswers": tf_answers,
         "matchanswers": match_answers,
+        "sqanswers": sq_answers,
+        "lqanswers": lq_answers,
     }
 
     # Step 4: Render Word files
