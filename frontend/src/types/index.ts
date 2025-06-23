@@ -30,9 +30,8 @@ export interface QuestionMetadata {
   date: string;
   time: string;
   selection_settings: {
-    [key: string]: {
-      count: number;
-      categories?: string[];
+    [questionType: string]: {
+      [category: string]: number;
     };
   };
 }
