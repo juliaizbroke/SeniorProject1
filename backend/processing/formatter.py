@@ -9,15 +9,56 @@ OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
 
 
 def filter_and_randomize(questions, settings):
+    import random
+    
     selected = {
         "multiple choice": [],
         "true/false": [],
         "matching": [],
         "written question": []
     }
+    
+    # If there are no specific selection settings, include all questions
+    if not settings:
+        for qtype in selected:
+            qset = [q for q in questions if q["type"] == qtype]
+            selected[qtype].extend(qset)
+        return selected
+    
+    # Group questions by type and category
+    grouped = {}
     for qtype in selected:
-        qset = [q for q in questions if q["type"] == qtype]
-        selected[qtype].extend(qset)
+        grouped[qtype] = {}
+        for q in [q for q in questions if q["type"] == qtype]:
+            category = q.get("category", "uncategorized")
+            if category not in grouped[qtype]:
+                grouped[qtype][category] = []
+            grouped[qtype][category].append(q)
+    
+    # Apply selection settings for each question type and category
+    for qtype, categories in settings.items():
+        if qtype not in grouped:
+            continue
+            
+        for category, count in categories.items():
+            if category not in grouped[qtype]:
+                continue
+                
+            # Get available questions for this category
+            available = grouped[qtype][category]
+            
+            # Randomly select the requested number of questions (or all if fewer)
+            selected_count = min(count, len(available))
+            if selected_count > 0:
+                selected_questions = random.sample(available, selected_count)
+                selected[qtype].extend(selected_questions)
+    
+    # For any question type without specific settings, include all questions
+    for qtype in selected:
+        if qtype not in settings and grouped.get(qtype):
+            for category_questions in grouped[qtype].values():
+                selected[qtype].extend(category_questions)
+    
     return selected
 
 

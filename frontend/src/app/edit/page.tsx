@@ -10,10 +10,14 @@ import {
   Link,
   Tab,
   Tabs,
+  Divider,
+  Snackbar,
+  Alert
 } from "@mui/material";
 import QuestionEditor from "../../components/QuestionEditor";
-import { Question, QuestionMetadata, GenerateResponse } from "../../types";
-import { generateExam, getDownloadUrl } from "../../utils/api";
+import CategorySelection from "../../components/CategorySelection";
+import { Question, QuestionMetadata, GenerateResponse, UploadResponse } from "../../types";
+import { generateExam, getDownloadUrl, refreshExcelData } from "../../utils/api";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -21,12 +25,17 @@ export default function EditPage() {
   const [sessionId, setSessionId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'info' | 'warning'
+  });
   const [downloadLinks, setDownloadLinks] = useState<GenerateResponse | null>(
     null
   );
   const router = useRouter();
   const [tabIndex, setTabIndex] = useState(0);
-
   useEffect(() => {
     const q = localStorage.getItem("questions");
     const m = localStorage.getItem("metadata");
@@ -34,7 +43,14 @@ export default function EditPage() {
 
     if (q && m && s) {
       setQuestions(JSON.parse(q));
-      setMetadata(JSON.parse(m));
+      
+      // Parse the metadata and ensure selection_settings exists
+      const parsedMetadata = JSON.parse(m);
+      if (!parsedMetadata.selection_settings) {
+        parsedMetadata.selection_settings = {};
+      }
+      
+      setMetadata(parsedMetadata);
       setSessionId(s);
     } else {
       router.replace("/");
@@ -111,6 +127,57 @@ export default function EditPage() {
     setQuestions([...otherQuestions, ...filteredQuestions]);
   };
 
+  // Function to handle refreshing data from the Excel file
+  const handleRefreshData = async () => {
+    if (!sessionId) {
+      setSnackbar({
+        open: true,
+        message: 'No active session found. Please upload your file again.',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    try {
+      setRefreshing(true);
+      setError("");
+      
+      // Call API to refresh data
+      const response: UploadResponse = await refreshExcelData(sessionId);
+      
+      // Update questions and metadata
+      setQuestions(response.questions);
+      
+      // Ensure selection_settings exists in the metadata
+      const updatedMetadata = {
+        ...response.metadata,
+        selection_settings: response.metadata.selection_settings || {}
+      };
+      
+      setMetadata(updatedMetadata);
+      
+      // Update localStorage
+      localStorage.setItem("questions", JSON.stringify(response.questions));
+      localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
+      
+      setSnackbar({
+        open: true,
+        message: 'Successfully refreshed data from Excel file.',
+        severity: 'success'
+      });
+    } catch (err) {
+      console.error("Error refreshing data:", err);
+      setError("Failed to refresh data from Excel file.");
+      setSnackbar({
+        open: true,
+        message: 'Failed to refresh data. Please try uploading the file again.',
+        severity: 'error'
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <Box sx={{ bgcolor: "#f9fafb", minHeight: "100vh", px: 4, py: 6 }}>
       <Box sx={{ maxWidth: "1200px", mx: "auto" }}>
@@ -136,7 +203,35 @@ export default function EditPage() {
         >
           Review and edit your exam questions before generating the final
           documents.
-        </Typography>        
+        </Typography>          <Box sx={{ mb: 4 }}>          {metadata && (
+            <CategorySelection 
+              questions={questions} 
+              metadata={metadata} 
+              onChange={(updatedMetadata) => {
+                setMetadata(updatedMetadata);
+                localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
+              }}
+              onFilterQuestions={(filteredQuestions) => {
+                // Update the questions state with the filtered questions
+                setQuestions(filteredQuestions);
+                // Update localStorage with the filtered questions
+                localStorage.setItem("questions", JSON.stringify(filteredQuestions));
+              }}
+              onRefresh={handleRefreshData}
+            />
+          )}
+          
+          <Divider sx={{ my: 3 }} />
+          
+          <Typography variant="h6" sx={{ 
+            mb: 2, 
+            color: "#000",
+            fontFamily: "var(--sds-typography-title-hero-font-family)", 
+            fontWeight: 600 }}>
+            Edit Questions
+          </Typography>
+        </Box>
+        
         <Tabs
           value={tabIndex}
           onChange={(_, newValue) => setTabIndex(newValue)}
@@ -324,6 +419,22 @@ export default function EditPage() {
             </Box>
           </Box>
         )}
+
+        {/* Global snackbar for status messages */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Box>
   );
