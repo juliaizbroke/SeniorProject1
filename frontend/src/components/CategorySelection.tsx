@@ -89,6 +89,7 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
     
     // Check if any selections were made
     let totalSelected = 0;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     Object.entries(settings).forEach(([type, categories]) => {
       Object.values(categories).forEach(count => {
         totalSelected += count;
@@ -256,7 +257,7 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
               <>
                 This will filter your question list down to {selectedQuestions.length} questions based on your category selections.
                 <br /><br />
-                This action will remove all questions that don't match your category selections. Are you sure you want to continue?
+                This action will remove all questions that do not match your category selections. Are you sure you want to continue?
               </>
             ) : (
               <>
