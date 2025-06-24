@@ -77,11 +77,9 @@ def generate_word_files(questions, metadata, session_id):
     tf_answers = []
     match_answers = []
     sq_answers = []
-    lq_answers = []
-
-    # Set random seed based on current time to ensure different randomization each time
+    lq_answers = []    # Set random seed based on current time to ensure different randomization each time
     random.seed()
-
+    
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
         mc_questions.append({
             "no": i,
@@ -98,7 +96,9 @@ def generate_word_files(questions, metadata, session_id):
 
     for i, q in enumerate(filtered.get("true/false", []), 1):
         tf_questions.append({"no": i, "question": q["question"]})
-        tf_answers.append({"no": i, "ans": q["answer"]})    # For matching questions, we'll group them all into one matching exercise
+        tf_answers.append({"no": i, "ans": q["answer"]})
+        
+    # For matching questions, we'll group them all into one matching exercise
     matching_questions = filtered.get("matching", [])
     if matching_questions:
         # Extract all questions and answers
@@ -121,13 +121,13 @@ def generate_word_files(questions, metadata, session_id):
             "column_b": shuffled_answers  # All answers shuffled in column B
         })
         
-        # Create answer key mapping
-        answer_mapping = []
+        # Create individual answer entries for each matching item
+        # This format will support the template format: 1 b, 2 a, 3 c, etc.
+        match_answers = []
         for i, original_answer in enumerate(answers_list):
             answer_idx = shuffled_answers.index(original_answer)
-            answer_mapping.append(f"{i+1}-{chr(65+answer_idx)}")
-            
-        match_answers.append({"no": 1, "ans": ", ".join(answer_mapping)})  # Store mapping as answer
+            answer_letter = chr(65 + answer_idx).lower()  # Convert to lowercase letter (a, b, c, etc.)
+            match_answers.append({"no": i+1, "ans": answer_letter})
 
     # Separate counters for short and long questions
     sq_counter = 1
