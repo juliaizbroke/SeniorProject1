@@ -15,9 +15,8 @@ import {
   Alert
 } from "@mui/material";
 import QuestionEditor from "../../components/QuestionEditor";
-import CategorySelection from "../../components/CategorySelection";
-import { Question, QuestionMetadata, GenerateResponse, UploadResponse } from "../../types";
-import { generateExam, getDownloadUrl, refreshExcelData } from "../../utils/api";
+import { Question, QuestionMetadata, GenerateResponse} from "../../types";
+import { generateExam, getDownloadUrl} from "../../utils/api";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -25,7 +24,6 @@ export default function EditPage() {
   const [sessionId, setSessionId] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -127,56 +125,6 @@ export default function EditPage() {
     setQuestions([...otherQuestions, ...filteredQuestions]);
   };
 
-  // Function to handle refreshing data from the Excel file
-  const handleRefreshData = async () => {
-    if (!sessionId) {
-      setSnackbar({
-        open: true,
-        message: 'No active session found. Please upload your file again.',
-        severity: 'error'
-      });
-      return;
-    }
-    
-    try {
-      setRefreshing(true);
-      setError("");
-      
-      // Call API to refresh data
-      const response: UploadResponse = await refreshExcelData(sessionId);
-      
-      // Update questions and metadata
-      setQuestions(response.questions);
-      
-      // Ensure selection_settings exists in the metadata
-      const updatedMetadata = {
-        ...response.metadata,
-        selection_settings: response.metadata.selection_settings || {}
-      };
-      
-      setMetadata(updatedMetadata);
-      
-      // Update localStorage
-      localStorage.setItem("questions", JSON.stringify(response.questions));
-      localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
-      
-      setSnackbar({
-        open: true,
-        message: 'Successfully refreshed data from Excel file.',
-        severity: 'success'
-      });
-    } catch (err) {
-      console.error("Error refreshing data:", err);
-      setError("Failed to refresh data from Excel file.");
-      setSnackbar({
-        open: true,
-        message: 'Failed to refresh data. Please try uploading the file again.',
-        severity: 'error'
-      });
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   return (
     <Box sx={{ bgcolor: "#f9fafb", minHeight: "100vh", px: 4, py: 6 }}>
@@ -203,26 +151,9 @@ export default function EditPage() {
         >
           Review and edit your exam questions before generating the final
           documents.
-        </Typography>          <Box sx={{ mb: 4 }}>          {metadata && (
-            <CategorySelection 
-              questions={questions} 
-              metadata={metadata} 
-              onChange={(updatedMetadata) => {
-                setMetadata(updatedMetadata);
-                localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
-              }}
-              onFilterQuestions={(filteredQuestions) => {
-                // Update the questions state with the filtered questions
-                setQuestions(filteredQuestions);
-                // Update localStorage with the filtered questions
-                localStorage.setItem("questions", JSON.stringify(filteredQuestions));
-              }}
-              onRefresh={handleRefreshData}
-            />
-          )}
-          
+        </Typography>          
+        <Box sx={{ mb: 4 }}>          
           <Divider sx={{ my: 3 }} />
-          
           <Typography variant="h6" sx={{ 
             mb: 2, 
             color: "#000",
@@ -297,46 +228,7 @@ export default function EditPage() {
           </Box>
         )}
 
-        {/* {metadata && (
-          <Box
-            sx={{ bgcolor: "#fff", p: 4, borderRadius: 2, mb: 6, boxShadow: 1 }}
-          >
-            <Typography variant="h5" fontWeight="bold" gutterBottom>
-              Exam Details
-            </Typography>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 3,
-              }}
-            >
-              {[
-                { label: "Year", value: metadata.year },
-                { label: "Semester", value: metadata.semester },
-                { label: "Exam Type", value: metadata.exam_type },
-                {
-                  label: "Exam Type Code",
-                  value: `${metadata.exam_type}_${metadata.semester}/${metadata.year}`,
-                },
-                { label: "Department", value: metadata.department },
-                { label: "Program Type", value: metadata.program_type },
-                { label: "Subject Code", value: metadata.subject_code },
-                { label: "Subject Name", value: metadata.subject_name },
-                { label: "Lecturer", value: metadata.lecturer },
-                { label: "Date", value: metadata.date },
-                { label: "Time", value: metadata.time },
-              ].map((item, i) => (
-                <Box key={i}>
-                  <Typography variant="caption" color="text.secondary">
-                    {item.label}
-                  </Typography>
-                  <Typography fontWeight={500}>{item.value}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )} */}        <QuestionEditor
+        <QuestionEditor
           questions={getFilteredQuestions()}
           onQuestionsChange={handleFilteredQuestionsChange}
         />

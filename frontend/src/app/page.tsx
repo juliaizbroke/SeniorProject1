@@ -35,7 +35,7 @@ export default function LandingPage() {
       localStorage.setItem("metadata", JSON.stringify(response.metadata));
       localStorage.setItem("sessionId", response.session_id);
 
-      router.push("/edit");
+      router.push("/category");
     } catch (err) {
       setError(
         "Failed to upload file. Please make sure it follows the correct format."
