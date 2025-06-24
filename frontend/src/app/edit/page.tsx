@@ -20,6 +20,7 @@ import { generateExam, getDownloadUrl} from "../../utils/api";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]); // Store full pool for shuffling
   const [metadata, setMetadata] = useState<QuestionMetadata | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
   const [error, setError] = useState<string>("");
@@ -28,19 +29,27 @@ export default function EditPage() {
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error' | 'info' | 'warning'
-  });
-  const [downloadLinks, setDownloadLinks] = useState<GenerateResponse | null>(
+  });  const [downloadLinks, setDownloadLinks] = useState<GenerateResponse | null>(
     null
   );
   const router = useRouter();
   const [tabIndex, setTabIndex] = useState(0);
-  useEffect(() => {
+  const [lockRefreshTrigger, setLockRefreshTrigger] = useState(0);useEffect(() => {
     const q = localStorage.getItem("questions");
+    const allQ = localStorage.getItem("allQuestions"); // Get full pool if available
     const m = localStorage.getItem("metadata");
     const s = localStorage.getItem("sessionId");
 
     if (q && m && s) {
-      setQuestions(JSON.parse(q));
+      const parsedQuestions = JSON.parse(q);
+      setQuestions(parsedQuestions);
+      
+      // Set full pool - use allQuestions if available, otherwise fall back to current questions
+      if (allQ) {
+        setAllQuestions(JSON.parse(allQ));
+      } else {
+        setAllQuestions(parsedQuestions); // Fallback to current questions
+      }
       
       // Parse the metadata and ensure selection_settings exists
       const parsedMetadata = JSON.parse(m);
@@ -53,11 +62,39 @@ export default function EditPage() {
     } else {
       router.replace("/");
     }
-  }, [router]);
-
-
-  const handleGenerate = async () => {
+  }, [router]);  const handleGenerate = async () => {
     if (!metadata || !sessionId) return;
+    
+    // Clear all question locks before generation to ensure all questions are included
+    const lockedQuestions = localStorage.getItem('lockedQuestions');
+    let hadLockedQuestions = false;
+    
+    if (lockedQuestions) {
+      try {
+        const lockedIds = JSON.parse(lockedQuestions);
+        if (lockedIds && lockedIds.length > 0) {          hadLockedQuestions = true;
+          localStorage.removeItem('lockedQuestions');
+          
+          // Force immediate UI update by triggering a re-render and refreshing QuestionEditor locks
+          // This ensures locked questions are visually shown as unlocked
+          setQuestions(prevQuestions => [...prevQuestions]);
+          setLockRefreshTrigger(prev => prev + 1); // Trigger QuestionEditor to refresh its lock state
+          
+          // Show notification about clearing locks
+          setSnackbar({
+            open: true,
+            message: `Cleared ${lockedIds.length} locked question(s) before generating exam documents.`,
+            severity: 'info'
+          });
+          
+          // Small delay to let user see the visual change
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error('Error checking locked questions:', error);
+      }
+    }
+    
     try {
       setLoading(true);
       setError("");
@@ -67,6 +104,17 @@ export default function EditPage() {
         metadata,
       });
       setDownloadLinks(response);
+      
+      // Show success message with lock clearing info if applicable
+      if (hadLockedQuestions) {
+        setTimeout(() => {
+          setSnackbar({
+            open: true,
+            message: 'Exam generated successfully! All questions were included (locks cleared).',
+            severity: 'success'
+          });
+        }, 1000);
+      }
     } catch (err) {
       setError("Failed to generate exam documents.");
       console.error(err);
@@ -79,7 +127,6 @@ export default function EditPage() {
     const tabs = ["Multiple Choice", "True/False", "Matching", "Written"];
     return tabs[index] || "Multiple Choice";
   };
-
   // Function to filter questions based on selected tab
   const getFilteredQuestions = () => {
     const questionType = getTabLabel(tabIndex);
@@ -95,6 +142,23 @@ export default function EditPage() {
         return questions.filter(q => q.type.toLowerCase() === "written question");
       default:
         return questions.filter(q => q.type.toLowerCase() === "multiple choice");
+    }
+  };
+  // Function to get all questions of the current type (for shuffling pool)
+  const getAllQuestionsOfCurrentType = () => {
+    const questionType = getTabLabel(tabIndex);
+    
+    switch (questionType) {
+      case "Multiple Choice":
+        return allQuestions.filter(q => q.type.toLowerCase() === "multiple choice");
+      case "True/False":
+        return allQuestions.filter(q => q.type.toLowerCase() === "true/false");
+      case "Matching":
+        return allQuestions.filter(q => q.type.toLowerCase() === "matching");
+      case "Written":
+        return allQuestions.filter(q => q.type.toLowerCase() === "written question");
+      default:
+        return allQuestions.filter(q => q.type.toLowerCase() === "multiple choice");
     }
   };
 
@@ -226,40 +290,53 @@ export default function EditPage() {
           >
             <Typography color="error">{error}</Typography>
           </Box>
-        )}
-
-        <QuestionEditor
+        )}        <QuestionEditor
           questions={getFilteredQuestions()}
+          allQuestionsPool={getAllQuestionsOfCurrentType()}
           onQuestionsChange={handleFilteredQuestionsChange}
-        />
-
-        <Box
+          forceRefreshLocks={lockRefreshTrigger}
+        /><Box
           sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}
         >
-          <Button
-            variant="contained"
-            onClick={handleGenerate}
-            disabled={loading}
-            sx={{
-              height: "60px",
-              flexShrink: 0,
-              borderRadius: "10px",
-              border:"1px solid rgba(183, 182, 182, 0.60)",
-              backgroundColor: "#000",
-              "&:hover": {
-                backgroundColor: "#333",
-              },
-            }}
-          >
-            {loading ? (
-              <CircularProgress size={20} color="inherit" />
-            ) : (
-              <>
-                Continue to Preview
-                <TrendingFlatIcon sx={{ ml: 2 }} />
-              </>
-            )}
-          </Button>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+            {/* Warning about lock clearing */}
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                color: '#666', 
+                fontStyle: 'italic',
+                maxWidth: '300px',
+                textAlign: 'right'
+              }}
+            >
+              Note: All question locks will be cleared before generating the exam to ensure all questions are included.
+            </Typography>
+            
+            <Button
+              variant="contained"
+              onClick={handleGenerate}
+              disabled={loading}
+              sx={{
+                height: "60px",
+                flexShrink: 0,
+                borderRadius: "10px",
+                border:"1px solid rgba(183, 182, 182, 0.60)",
+                backgroundColor: "#000",
+                "&:hover": {
+                  backgroundColor: "#333",
+                },
+              }}
+            >
+              {loading ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : (
+                <>
+                  Continue to Preview
+                  <TrendingFlatIcon sx={{ ml: 2 }} />
+                </>
+              )}
+            </Button>
+          </Box>
         </Box>
 
         {downloadLinks && (
