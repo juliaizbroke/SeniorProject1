@@ -66,7 +66,7 @@ export default function CategoryPage() {
             fontFamily: "var(--sds-typography-title-hero-font-family)",
           }}
         >
-          Select Questions by Category
+          Edit Exam Metadata & Select Questions by Category
         </Typography>
         <Typography
           variant="subtitle1"
@@ -79,39 +79,9 @@ export default function CategoryPage() {
         >
           Choose the number of questions from each category to include in your exam.
         </Typography>
-
-        {metadata && (
-          <CategorySelection
-            questions={questions}
-            metadata={metadata}
-            onChange={(updatedMetadata) => {
-              setMetadata(updatedMetadata);
-              localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
-            }}
-            onFilterQuestions={handleFilterQuestions}
-          />
-        )}
-
-        <Divider sx={{ my: 3 }} />
-
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={6000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        >
-          <Alert
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            severity={snackbar.severity}
-            sx={{ width: "100%" }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
-      </Box>
-    {metadata && (
+          {metadata && (
           <Box
-            sx={{ bgcolor: "#fff", p: 4, borderRadius: 2, mb: 6, boxShadow: 1, mx:6 }}
+            sx={{ bgcolor: "#fff", p: 4, borderRadius: 2, mb: 6, boxShadow: 1}}
           >
             <Typography variant="h5"
                 sx={{
@@ -170,6 +140,35 @@ export default function CategoryPage() {
             </Box>
           </Box>
         )} 
+        <Divider sx={{ my: 5}} />
+        {metadata && (
+          <CategorySelection
+            questions={questions}
+            metadata={metadata}
+            onChange={(updatedMetadata) => {
+              setMetadata(updatedMetadata);
+              localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
+            }}
+            onFilterQuestions={handleFilterQuestions}
+          />
+        )}
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={6000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+        >
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: "100%" }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+        <Divider sx={{ my: 10}} />
+      </Box>
     </Box>
   );
 }

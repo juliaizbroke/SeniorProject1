@@ -155,24 +155,6 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
           Question Selection by Category
         </Typography>
         
-        <Tooltip title="Apply your category selections and filter the question list">
-          <Button 
-            variant="contained" 
-            color="primary" 
-            onClick={handleApplyFilters}
-            startIcon={<FilterAltIcon />}
-            sx={{
-              backgroundColor: '#000',
-              '&:hover': {
-                backgroundColor: '#333',
-              },
-              borderRadius: '8px',
-              px: 3
-            }}
-          >
-            Apply Filters
-          </Button>
-        </Tooltip>
       </Box>
       
       {Object.entries(questionGroups).map(([type, categories]) => (
@@ -240,7 +222,25 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
           {snackbarMessage}
         </Alert>
       </Snackbar>
-      
+        <Tooltip title="Apply your category selections and filter the question list">
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={handleApplyFilters}
+            startIcon={<FilterAltIcon />}
+            sx={{
+              float: 'right',
+              backgroundColor: '#000',
+              '&:hover': {
+                backgroundColor: '#333',
+              },
+              borderRadius: '8px',
+              px: 3
+            }}
+          >
+            Apply Filters
+          </Button>
+        </Tooltip>
       {/* Confirmation Dialog */}
       <Dialog
         open={confirmDialogOpen}
