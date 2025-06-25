@@ -41,8 +41,10 @@ export default function CategoryPage() {
       router.replace("/");
     }
   }, [router]);
-
   const handleFilterQuestions = (filteredQuestions: Question[]) => {
+    // Store the original full pool before filtering
+    localStorage.setItem("allQuestions", JSON.stringify(questions));
+    
     // Update the questions state with the filtered questions
     setQuestions(filteredQuestions);
     // Update localStorage with the filtered questions
