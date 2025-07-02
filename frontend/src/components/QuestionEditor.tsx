@@ -34,10 +34,10 @@ interface QuestionEditorProps {
 const QuestionPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(2),
-  border: '1px solid #e0e0e0',
+  border: '1px solid #e2e8f0',
   borderRadius: theme.spacing(1),
-  backgroundColor: '#ffffff',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  backgroundColor: '#f8fafc',
+  boxShadow: 'none',
 }));
 
 export default function QuestionEditor({ questions, allQuestionsPool, onQuestionsChange, forceRefreshLocks }: QuestionEditorProps) {
@@ -431,14 +431,14 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       {hasIdCollisions && questions.length > 1 && (
         <Box sx={{ 
           p: 2, 
-          bgcolor: '#fff3e0', 
+          bgcolor: '#fef3c7', 
           borderRadius: 1, 
-          border: '1px solid #ffcc02',
+          border: '1px solid #fbbf24',
           display: 'flex',
           alignItems: 'center',
           gap: 2
         }}>
-          <Typography variant="body2" sx={{ color: '#f57c00', flex: 1 }}>
+          <Typography variant="body2" sx={{ color: '#92400e', flex: 1 }}>
             ⚠️ Some questions have similar content and may share lock states. Check browser console for details.
           </Typography>
         </Box>
@@ -448,15 +448,15 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       {lockedQuestions.size > 0 && !questions.some((q, i) => lockedQuestions.has(getQuestionId(q, i))) && (
         <Box sx={{ 
           p: 2, 
-          bgcolor: '#fff3e0', 
+          bgcolor: '#dbeafe', 
           borderRadius: 1, 
-          border: '1px solid #ffcc02',
+          border: '1px solid #60a5fa',
           display: 'flex',
           alignItems: 'center',
           gap: 2
         }}>
-          <LockIcon sx={{ color: '#f57c00' }} />
-          <Typography variant="body2" sx={{ color: '#f57c00', flex: 1 }}>
+          <LockIcon sx={{ color: '#1e40af' }} />
+          <Typography variant="body2" sx={{ color: '#1e40af', flex: 1 }}>
             You have {lockedQuestions.size} locked question(s) in other tabs. They remain locked even when not visible.
           </Typography>
         </Box>
@@ -469,11 +469,11 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
               startIcon={<LockOpenOutlinedIcon />}
               onClick={handleClearAllLocks}
               sx={{
-                borderColor: '#f57c00',
-                color: '#f57c00',
+                borderColor: '#dc2626',
+                color: '#dc2626',
                 '&:hover': {
-                  borderColor: '#e65100',
-                  backgroundColor: 'rgba(245, 124, 0, 0.04)',
+                  borderColor: '#b91c1c',
+                  backgroundColor: 'rgba(220, 38, 38, 0.04)',
                 },
               }}
             >
@@ -488,11 +488,11 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
               onClick={handleShuffleQuestions}
               disabled={!getShuffleInfo().canShuffle}
               sx={{
-                borderColor: getShuffleInfo().canShuffle ? '#000' : '#ccc',
-                color: getShuffleInfo().canShuffle ? '#000' : '#999',
+                borderColor: getShuffleInfo().canShuffle ? '#1e3a8a' : '#ccc',
+                color: getShuffleInfo().canShuffle ? '#1e3a8a' : '#999',
                 '&:hover': {
-                  borderColor: getShuffleInfo().canShuffle ? '#333' : '#ccc',
-                  backgroundColor: getShuffleInfo().canShuffle ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+                  borderColor: getShuffleInfo().canShuffle ? '#1e40af' : '#ccc',
+                  backgroundColor: getShuffleInfo().canShuffle ? 'rgba(30, 58, 138, 0.04)' : 'transparent',
                 },
                 '&.Mui-disabled': {
                   borderColor: '#ccc',
@@ -514,9 +514,9 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
             elevation={0}
             sx={{
               opacity: isLocked ? 0.8 : 1,
-              borderColor: isLocked ? '#f57c00' : '#e0e0e0',
+              borderColor: isLocked ? '#1e40af' : '#e2e8f0',
               borderWidth: isLocked ? '2px' : '1px',
-              backgroundColor: isLocked ? '#fff8e1' : '#ffffff',
+              backgroundColor: isLocked ? '#dbeafe' : '#f8fafc',
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
@@ -549,7 +549,7 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
                     onClick={() => handleLockToggle(questionId)}
                     sx={{ 
                       p: 0.5,
-                      color: lockedQuestions.has(questionId) ? '#f57c00' : '#666',
+                      color: lockedQuestions.has(questionId) ? '#1e40af' : '#666',
                       '&:hover': { bgcolor: 'action.hover' }
                     }}
                   >

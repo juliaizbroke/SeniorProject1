@@ -14,6 +14,7 @@ import {
   Grid,
 } from "@mui/material";
 import FileUpload from "../components/FileUpload";
+import Navbar from "../components/Navbar";
 import { uploadExcel } from "../utils/api";
 import { UploadResponse } from "../types";
 
@@ -47,7 +48,9 @@ export default function LandingPage() {
   };
 
   return (
-    <Box minHeight="100vh" bgcolor="#f5f5f5" py={6}>
+    <Box minHeight="100vh" bgcolor="#f8fafc">
+      <Navbar />
+      <Box py={6}>
       <Box
       sx={{
         px: 13,
@@ -140,6 +143,7 @@ export default function LandingPage() {
           </CardContent>
         </Card>
       </Container>
+      </Box>
     </Box>
   );
 }

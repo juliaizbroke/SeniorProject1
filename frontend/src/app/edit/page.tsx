@@ -7,7 +7,6 @@ import {
   Typography,
   Button,
   CircularProgress,
-  Link,
   Tab,
   Tabs,
   Divider,
@@ -15,8 +14,9 @@ import {
   Alert
 } from "@mui/material";
 import QuestionEditor from "../../components/QuestionEditor";
+import Navbar from "../../components/Navbar";
 import { Question, QuestionMetadata, GenerateResponse} from "../../types";
-import { generateExam, getDownloadUrl} from "../../utils/api";
+import { generateExam} from "../../utils/api";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -29,9 +29,8 @@ export default function EditPage() {
     open: false,
     message: '',
     severity: 'success' as 'success' | 'error' | 'info' | 'warning'
-  });  const [downloadLinks, setDownloadLinks] = useState<GenerateResponse | null>(
-    null
-  );
+  });  
+  
   const router = useRouter();
   const [tabIndex, setTabIndex] = useState(0);
   const [lockRefreshTrigger, setLockRefreshTrigger] = useState(0);useEffect(() => {
@@ -63,7 +62,7 @@ export default function EditPage() {
       router.replace("/");
     }
   }, [router]);  const handleGenerate = async () => {
-    if (!metadata || !sessionId) return;
+    if (!metadata || !sessionId) return null;
     
     // Clear all question locks before generation to ensure all questions are included
     const lockedQuestions = localStorage.getItem('lockedQuestions');
@@ -103,7 +102,7 @@ export default function EditPage() {
         questions,
         metadata,
       });
-      setDownloadLinks(response);
+
       
       // Show success message with lock clearing info if applicable
       if (hadLockedQuestions) {
@@ -115,9 +114,12 @@ export default function EditPage() {
           });
         }, 1000);
       }
+      
+      return response;
     } catch (err) {
       setError("Failed to generate exam documents.");
       console.error(err);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -191,40 +193,35 @@ export default function EditPage() {
 
 
   return (
-    <Box sx={{ bgcolor: "#f9fafb", minHeight: "100vh", px: 4, py: 6 }}>
-      <Box sx={{ maxWidth: "1200px", mx: "auto" }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            mb: 2,
-            color: "#000",
-            fontFamily: "var(--sds-typography-title-hero-font-family)",
-          }}
-        >
-          Edit Questions
-        </Typography>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 400,
-            mb: 4,
-            color: "#757575",
-            fontFamily: "var(--sds-typography-title-hero-font-family)",
-          }}
-        >
-          Review and edit your exam questions before generating the final
-          documents.
-        </Typography>          
-        <Box sx={{ mb: 4 }}>          
-          <Divider sx={{ my: 3 }} />
-          <Typography variant="h6" sx={{ 
-            mb: 2, 
-            color: "#000",
-            fontFamily: "var(--sds-typography-title-hero-font-family)", 
-            fontWeight: 600 }}>
+    <Box sx={{ bgcolor: "white", minHeight: "100vh" }}>
+      <Navbar />
+      <Box sx={{ px: 4, py: 6 }}>
+        <Box sx={{ maxWidth: "1200px", mx: "auto" }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 700,
+              mb: 2,
+              color: "#1e3a8a",
+              fontFamily: "var(--sds-typography-title-hero-font-family)",
+            }}
+          >
             Edit Questions
           </Typography>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 400,
+              mb: 4,
+              color: "#64748b",
+              fontFamily: "var(--sds-typography-title-hero-font-family)",
+            }}
+          >
+            Review and edit your exam questions before generating the final
+            documents.
+          </Typography>          
+        <Box sx={{ mb: 4 }}>          
+          <Divider sx={{ my: 3, borderColor: "#e2e8f0" }} />
         </Box>
         
         <Tabs
@@ -236,23 +233,22 @@ export default function EditPage() {
               height: "35px",
               borderRadius: 8,
               margin: "5px 2px",
-              backgroundColor: "white",
+              backgroundColor: "#1e3a8a",
               transition: "all 0.3s ease-in-out",
               boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
             },
           }}
           sx={{
             mb: 2,
-            bgcolor: "#e5e5e5",
+            bgcolor: "#f1f5f9",
             borderRadius: 2,
             minHeight: "20px",
-
             "& .MuiTabs-flexContainer": {
               position: "relative",
               zIndex: 1,
             },
             "& .MuiTab-root": {
-              zIndex: 2, // above the indicator
+              zIndex: 2,
             },
           }}
         >
@@ -268,9 +264,9 @@ export default function EditPage() {
                 height: "40px",
                 borderRadius: 1,
                 transition: "color 0.2s ease-in-out",
-                color: "text.secondary",
+                color: "#64748b",
                 "&.Mui-selected": {
-                  color: "#000",
+                  color: "white",
                   fontWeight: 600,
                 },
               }}
@@ -283,19 +279,23 @@ export default function EditPage() {
             sx={{
               mb: 4,
               p: 2,
-              bgcolor: "#fff0f0",
-              border: "1px solid #fbc2c2",
+              bgcolor: "#fef2f2",
+              border: "1px solid #fecaca",
               borderRadius: 2,
             }}
           >
             <Typography color="error">{error}</Typography>
           </Box>
-        )}        <QuestionEditor
+        )}
+        
+        <QuestionEditor
           questions={getFilteredQuestions()}
           allQuestionsPool={getAllQuestionsOfCurrentType()}
           onQuestionsChange={handleFilteredQuestionsChange}
           forceRefreshLocks={lockRefreshTrigger}
-        /><Box
+        />
+
+        <Box
           sx={{ display: "flex", justifyContent: "flex-end", gap: 2, mt: 4 }}
         >
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
@@ -314,16 +314,34 @@ export default function EditPage() {
             
             <Button
               variant="contained"
-              onClick={handleGenerate}
+              onClick={async () => {
+                const response = await handleGenerate();
+                if (response) {
+                  const queryParams = new URLSearchParams({
+                    examUrl: encodeURIComponent(response.exam_url),
+                    keyUrl: encodeURIComponent(response.key_url)
+                  });
+                  
+                  if (response.exam_preview_url) {
+                    queryParams.append('examPreviewUrl', encodeURIComponent(response.exam_preview_url));
+                  }
+                  if (response.key_preview_url) {
+                    queryParams.append('keyPreviewUrl', encodeURIComponent(response.key_preview_url));
+                  }
+                  
+                  router.push(`/preview?${queryParams.toString()}`);
+                }
+              }}
               disabled={loading}
               sx={{
                 height: "60px",
                 flexShrink: 0,
                 borderRadius: "10px",
-                border:"1px solid rgba(183, 182, 182, 0.60)",
-                backgroundColor: "#000",
+                border: "1px solid #1e3a8a",
+                backgroundColor: "#1e3a8a",
+                color: "white",
                 "&:hover": {
-                  backgroundColor: "#333",
+                  backgroundColor: "#1e40af",
                 },
               }}
             >
@@ -338,56 +356,6 @@ export default function EditPage() {
             </Button>
           </Box>
         </Box>
-
-        {downloadLinks && (
-          <Box
-            sx={{
-              bgcolor: "#ecfdf5",
-              border: "1px solid #d1fae5",
-              borderRadius: 2,
-              p: 4,
-              mt: 6,
-            }}
-          >
-            <Typography variant="h6" fontWeight="bold" color="green">
-              Documents Generated Successfully!
-            </Typography>
-            <Box
-              sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 1 }}
-            >
-              <Link
-                href={getDownloadUrl(downloadLinks.exam_url)}
-                underline="none"
-                download
-                sx={{
-                  px: 3,
-                  py: 1.5,
-                  bgcolor: "#fff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 1,
-                  "&:hover": { bgcolor: "#f1f5f9" },
-                }}
-              >
-                Download Exam Paper
-              </Link>
-              <Link
-                href={getDownloadUrl(downloadLinks.key_url)}
-                underline="none"
-                download
-                sx={{
-                  px: 3,
-                  py: 1.5,
-                  bgcolor: "#fff",
-                  border: "1px solid #cbd5e1",
-                  borderRadius: 1,
-                  "&:hover": { bgcolor: "#f1f5f9" },
-                }}
-              >
-                Download Answer Key
-              </Link>
-            </Box>
-          </Box>
-        )}
 
         {/* Global snackbar for status messages */}
         <Snackbar
@@ -404,6 +372,7 @@ export default function EditPage() {
             {snackbar.message}
           </Alert>
         </Snackbar>
+        </Box>
       </Box>
     </Box>
   );
