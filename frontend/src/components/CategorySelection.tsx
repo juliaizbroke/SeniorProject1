@@ -115,6 +115,54 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
           filteredQuestions.push(...selected);
         }
       });
+      
+      // Add fake answers for matching questions
+      if (type.toLowerCase().includes('matching')) {
+        const fakeAnswersCount = settings[type]?.['fake answers'] || 0;
+        if (fakeAnswersCount > 0) {
+          // Collect all unselected questions from all categories for this type
+          const allUnselectedQuestions: Question[] = [];
+          
+          Object.entries(categories).forEach(([category, categoryQuestions]) => {
+            const selectedFromCategory = settings[type]?.[category] || 0;
+            
+            // Get the questions that were NOT selected from this category
+            const shuffledCategoryQuestions = [...categoryQuestions].sort(() => 0.5 - Math.random());
+            const unselectedFromCategory = shuffledCategoryQuestions.slice(selectedFromCategory);
+            
+            // Add them to the pool of potential fake answers
+            allUnselectedQuestions.push(...unselectedFromCategory);
+          });
+          
+          // Randomly select fake answers from the unselected questions pool
+          const shuffledUnselected = [...allUnselectedQuestions].sort(() => 0.5 - Math.random());
+          const actualFakeAnswersCount = Math.min(fakeAnswersCount, shuffledUnselected.length);
+          
+          for (let i = 0; i < actualFakeAnswersCount; i++) {
+            const fakeAnswerQuestion = { ...shuffledUnselected[i] };
+            // Mark it as a fake answer while preserving original content
+            fakeAnswerQuestion.type = 'fake answer';
+            fakeAnswerQuestion.category = `fake answers - ${fakeAnswerQuestion.category}`;
+            fakeAnswerQuestion.q_type = 'fake';
+            
+            filteredQuestions.push(fakeAnswerQuestion);
+          }
+          
+          // If we need more fake answers than available unselected questions, create manual slots
+          const remainingFakeAnswers = fakeAnswersCount - actualFakeAnswersCount;
+          for (let i = 0; i < remainingFakeAnswers; i++) {
+            filteredQuestions.push({
+              type: 'fake answer',
+              category: 'fake answers - manual',
+              question: `[Fake Answer Slot ${actualFakeAnswersCount + i + 1}] - Create manually (no available pool)`,
+              answer: '',
+              q_type: 'fake',
+              is_long: false,
+              image: ''
+            } as Question);
+          }
+        }
+      }
     });
     
     return filteredQuestions;
@@ -132,6 +180,38 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
     
     // Show confirmation dialog
     setConfirmDialogOpen(true);
+  };
+
+  // Generate detailed breakdown of selected questions
+  const getSelectionBreakdown = () => {
+    const settings = metadata.selection_settings;
+    const breakdown: { [key: string]: { count: number; fakeAnswers: number } } = {};
+    let totalCount = 0;
+
+    Object.entries(settings).forEach(([type, categories]) => {
+      let typeTotal = 0;
+      let fakeAnswersCount = 0;
+
+      Object.entries(categories).forEach(([category, count]) => {
+        if (count > 0) {
+          if (category === 'fake answers') {
+            fakeAnswersCount = count;
+          } else {
+            typeTotal += count;
+          }
+        }
+      });
+
+      if (typeTotal > 0 || fakeAnswersCount > 0) {
+        breakdown[type] = {
+          count: typeTotal,
+          fakeAnswers: fakeAnswersCount
+        };
+        totalCount += typeTotal; // Only count real questions, not fake answers
+      }
+    });
+
+    return { breakdown, totalCount };
   };
   
   const handleConfirmFilter = () => {
@@ -217,6 +297,78 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
                       </TableCell>
                     </TableRow>
                   ))}
+                  
+                  {/* Add fake answers row for matching questions */}
+                  {type.toLowerCase().includes('matching') && (() => {
+                    // Calculate total available matching questions (all categories combined)
+                    const totalAvailableMatching = Object.entries(categories).reduce((total, [, questions]) => {
+                      return total + questions.length;
+                    }, 0);
+                    
+                    // Calculate total selected matching questions
+                    const totalSelectedMatching = Object.entries(categories).reduce((total, [category]) => {
+                      return total + (metadata.selection_settings?.[type]?.[category] || 0);
+                    }, 0);
+                    
+                    // Available fake answers = total available - total selected
+                    const availableFakeAnswers = totalAvailableMatching - totalSelectedMatching;
+                    const selectedFakeAnswers = metadata.selection_settings?.[type]?.['fake answers'] || 0;
+                    const needsManualCreation = selectedFakeAnswers > availableFakeAnswers;
+                    
+                    return (
+                      <>
+                        <TableRow key="fake-answers" sx={{ bgcolor: 'rgba(255, 152, 0, 0.1)', borderTop: '1px solid #ff9800' }}>
+                          <TableCell sx={{ fontStyle: 'italic', color: '#e65100', fontWeight: 500 }}>Fake Answers</TableCell>
+                          <TableCell sx={{ color: '#e65100', fontWeight: 500 }}>{availableFakeAnswers}</TableCell>
+                          <TableCell>
+                            <TextField
+                              type="number"
+                              size="small"
+                              inputProps={{ min: 0 }}
+                              value={selectedFakeAnswers}
+                              onChange={(e) => {
+                                const value = parseInt(e.target.value) || 0;
+                                handleCategoryCountChange(type, 'fake answers', value);
+                              }}
+                              sx={{ 
+                                width: '80px',
+                                '& .MuiOutlinedInput-root': {
+                                  backgroundColor: 'rgba(255, 152, 0, 0.05)',
+                                  borderColor: needsManualCreation ? '#ff5722' : '#ff9800',
+                                  '&:hover': {
+                                    borderColor: needsManualCreation ? '#ff5722' : '#f57c00',
+                                  },
+                                  '&.Mui-focused': {
+                                    borderColor: needsManualCreation ? '#ff5722' : '#f57c00',
+                                  }
+                                }
+                              }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                        
+                        {needsManualCreation && (
+                          <TableRow key="fake-answers-warning">
+                            <TableCell colSpan={3} sx={{ py: 1, px: 2, bgcolor: 'rgba(255, 152, 0, 0.05)' }}>
+                              <Typography 
+                                variant="caption" 
+                                sx={{ 
+                                  color: '#ff9800', 
+                                  fontStyle: 'italic',
+                                  fontSize: '0.75rem',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.5
+                                }}
+                              >
+                                ⚠️ You may need to create {selectedFakeAnswers - availableFakeAnswers} fake answer(s) manually
+                              </Typography>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    );
+                  })()}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -267,12 +419,61 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
           Confirm Filtering Questions
         </DialogTitle>
         <DialogContent>
-          <DialogContentText id="alert-dialog-description">
+          <DialogContentText component="div" id="alert-dialog-description">
             {selectedQuestions.length > 0 ? (
               <>
-                This will filter your question list down to {selectedQuestions.length} questions based on your category selections.
-                <br /><br />
-                This action will remove all questions that do not match your category selections. Are you sure you want to continue?
+                {(() => {
+                  const { breakdown, totalCount } = getSelectionBreakdown();
+                  
+                  return (
+                    <>
+                      <Typography component="div" variant="body1" sx={{ mb: 2 }}>
+                        This will filter your question list to include:
+                      </Typography>
+                      
+                      {Object.entries(breakdown).map(([type, { count, fakeAnswers }]) => {
+                        const displayType = type === 'written question' ? 'Written Questions' : 
+                                          type === 'multiple choice' ? 'Multiple Choice' :
+                                          type === 'true/false' ? 'True/False' :
+                                          type.charAt(0).toUpperCase() + type.slice(1);
+                        
+                        return (
+                          <div key={type}>
+                            {count > 0 && (
+                              <Typography component="div" variant="body2" sx={{ ml: 2, mb: 0.5 }}>
+                                • <strong>{count} {displayType}</strong>
+                                {fakeAnswers > 0 && (
+                                  <span style={{ color: '#ff9800', fontWeight: 600 }}>
+                                    {' '}({fakeAnswers} fake answers)
+                                  </span>
+                                )}
+                              </Typography>
+                            )}
+                            {fakeAnswers > 0 && count === 0 && (
+                              <Typography component="div" variant="body2" sx={{ ml: 2, mb: 0.5, color: '#ff9800' }}>
+                                • <strong>{fakeAnswers} Fake Answers</strong> (for {displayType})
+                              </Typography>
+                            )}
+                          </div>
+                        );
+                      })}
+                      
+                      <Typography component="div" variant="body1" sx={{ mt: 2, fontWeight: 600 }}>
+                        Total: {totalCount} questions selected
+                      </Typography>
+                      
+                      <Typography component="div" variant="body2" sx={{ mt: 2, color: '#666' }}>
+                        This action will remove all questions that do not match your category selections. 
+                        {Object.entries(breakdown).some(([, { fakeAnswers }]) => fakeAnswers > 0) && (
+                          <span style={{ color: '#ff9800' }}>
+                            {' '}Fake answers will be randomly selected from unselected questions in the same question type.
+                          </span>
+                        )}
+                        {' '}Are you sure you want to continue?
+                      </Typography>
+                    </>
+                  );
+                })()}
               </>
             ) : (
               <>

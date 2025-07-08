@@ -139,7 +139,7 @@ export default function EditPage() {
       case "True/False":
         return questions.filter(q => q.type.toLowerCase() === "true/false");
       case "Matching":
-        return questions.filter(q => q.type.toLowerCase() === "matching");
+        return questions.filter(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
       case "Written":
         return questions.filter(q => q.type.toLowerCase() === "written question");
       default:
@@ -156,7 +156,7 @@ export default function EditPage() {
       case "True/False":
         return allQuestions.filter(q => q.type.toLowerCase() === "true/false");
       case "Matching":
-        return allQuestions.filter(q => q.type.toLowerCase() === "matching");
+        return allQuestions.filter(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
       case "Written":
         return allQuestions.filter(q => q.type.toLowerCase() === "written question");
       default:
@@ -171,7 +171,7 @@ export default function EditPage() {
     // Create a new array with updated questions
     const updatedQuestions = [...questions];
     
-    // Remove old questions of this type
+    // Remove old questions of this type (including fake answers for matching type)
     const otherQuestions = updatedQuestions.filter(q => {
       switch (questionType) {
         case "Multiple Choice":
@@ -179,7 +179,7 @@ export default function EditPage() {
         case "True/False":
           return q.type.toLowerCase() !== "true/false";
         case "Matching":
-          return q.type.toLowerCase() !== "matching";
+          return q.type.toLowerCase() !== "matching" && q.type.toLowerCase() !== "fake answer";
         case "Written":
           return q.type.toLowerCase() !== "written question";
         default:

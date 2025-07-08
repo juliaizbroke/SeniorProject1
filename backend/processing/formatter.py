@@ -61,7 +61,6 @@ def filter_and_randomize(questions, settings):
     
     return selected
 
-
 def generate_word_files(questions, metadata, session_id):
     # Step 1: Filter & randomize if needed
     filtered = filter_and_randomize(questions, metadata.get("selection_settings", {}))
@@ -77,7 +76,9 @@ def generate_word_files(questions, metadata, session_id):
     tf_answers = []
     match_answers = []
     sq_answers = []
-    lq_answers = []    # Set random seed based on current time to ensure different randomization each time
+    lq_answers = []
+
+    # Set random seed based on current time to ensure different randomization each time
     random.seed()
     
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
@@ -100,6 +101,8 @@ def generate_word_files(questions, metadata, session_id):
         
     # For matching questions, we'll group them all into one matching exercise
     matching_questions = filtered.get("matching", [])
+    matching_items_count = 0  # Track the actual number of matching items
+    
     if matching_questions:
         # Extract all questions and answers
         questions_list = []
@@ -108,6 +111,8 @@ def generate_word_files(questions, metadata, session_id):
         for q in matching_questions:
             questions_list.append(q["question"])
             answers_list.append(q["answer"])
+        
+        matching_items_count = len(questions_list)  # Set the count of matching items
         
         # Create a copy of answers and shuffle them for column B
         shuffled_answers = answers_list.copy()
@@ -129,19 +134,7 @@ def generate_word_files(questions, metadata, session_id):
             answer_letter = chr(65 + answer_idx).lower()  # Convert to lowercase letter (a, b, c, etc.)
             match_answers.append({"no": i+1, "ans": answer_letter})
 
-    # Separate counters for short and long questions
-    sq_counter = 1
-    lq_counter = 1
-
-    for q in filtered.get("written question", []):
-        if q["q_type"] == "short":
-            sq_questions.append({"no": sq_counter, "question": q["question"]})
-            sq_answers.append({"no": sq_counter, "ans": q["answer"]})
-            sq_counter += 1
-        elif q["q_type"] == "long":
-            lq_questions.append({"no": lq_counter, "question": q["question"]})
-            lq_answers.append({"no": lq_counter, "ans": q["answer"]})
-            lq_counter += 1
+    # ...existing code for written questions...
 
     # Step 3: Prepare context for rendering
     context = {
@@ -149,10 +142,10 @@ def generate_word_files(questions, metadata, session_id):
         **metadata,
         "mc_no": len(mc_questions),
         "tf_no": len(tf_questions),
-        "match_no": len(match_questions),
+        "match_no": matching_items_count,  # Use the count of matching items instead of len(match_questions)
         "sq_no": len(sq_questions),
         "lq_no": len(lq_questions),
-        "total_no": len(mc_questions) + len(tf_questions) + len(match_questions) + len(sq_questions) + len(lq_questions),
+        "total_no": len(mc_questions) + len(tf_questions) + matching_items_count + len(sq_questions) + len(lq_questions),
         "percent": 100,
         "mcquestions": mc_questions,
         "tfquestions": tf_questions,

@@ -97,7 +97,7 @@ export default function HomePage() {
               </Box>
               {/* File Upload */}
               <Box mb={3}>
-                <FileUpload onFileSelect={setSelectedFile} />
+                <FileUpload onFileSelect={setSelectedFile} selectedFile={selectedFile} />
               </Box>
               {/* Upload Button */}
               <Box textAlign="center">
