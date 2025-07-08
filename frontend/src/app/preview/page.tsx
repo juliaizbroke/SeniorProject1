@@ -11,7 +11,7 @@ import {
   Tab,
 } from "@mui/material";
 import Navbar from "../../components/Navbar";
-import { getDownloadUrl } from "../../utils/api";
+import { getPreviewUrl, getDownloadUrl } from "../../utils/api";
 import { QuestionMetadata } from "../../types";
 
 export default function PreviewPage() {
@@ -47,6 +47,22 @@ export default function PreviewPage() {
       };
       
       console.log('Setting download links:', links);
+      console.log('Exam preview URL exists?', !!links.exam_preview_url);
+      console.log('Key preview URL exists?', !!links.key_preview_url);
+      
+      // If no preview URLs are provided, try to construct them from the download URLs
+      if (!links.exam_preview_url && links.exam_url) {
+        // Convert download URL to preview URL
+        links.exam_preview_url = links.exam_url.replace('/download/', '/preview/');
+        console.log('Generated exam preview URL:', links.exam_preview_url);
+      }
+      
+      if (!links.key_preview_url && links.key_url) {
+        // Convert download URL to preview URL
+        links.key_preview_url = links.key_url.replace('/download/', '/preview/');
+        console.log('Generated key preview URL:', links.key_preview_url);
+      }
+      
       setDownloadLinks(links);
     }
 
@@ -186,30 +202,51 @@ export default function PreviewPage() {
         >
           {downloadLinks ? (
             <Box>
-              {/* Show HTML preview if available */}
-              {(tabIndex === 0 && downloadLinks.exam_preview_url) || 
-               (tabIndex === 1 && downloadLinks.key_preview_url) ? (
-                <iframe
-                  src={getDownloadUrl(
-                    tabIndex === 0 
-                      ? downloadLinks.exam_preview_url! 
-                      : downloadLinks.key_preview_url!
-                  )}
-                  style={{ 
-                    width: "100%", 
-                    height: "600px", 
-                    border: "1px solid #e0e0e0",
-                    borderRadius: "4px"
-                  }}
-                  title={tabIndex === 0 ? "Exam Paper Preview" : "Answer Key Preview"}
-                />
+              {/* Debug information */}
+              <Typography variant="caption" sx={{ mb: 2, display: 'block', color: '#666' }}>
+                Current tab: {tabIndex === 0 ? 'Exam Paper' : 'Answer Key'}<br/>
+                Preview URL available: {tabIndex === 0 ? (downloadLinks.exam_preview_url ? 'Yes' : 'No') : (downloadLinks.key_preview_url ? 'Yes' : 'No')}<br/>
+                {downloadLinks.exam_preview_url && `Exam Preview: ${downloadLinks.exam_preview_url}`}<br/>
+                {downloadLinks.key_preview_url && `Key Preview: ${downloadLinks.key_preview_url}`}
+              </Typography>
+              
+              {/* Show iframe only if we have HTML preview URLs */}
+              {(tabIndex === 0 && downloadLinks.exam_preview_url && downloadLinks.exam_preview_url.includes('_preview.html')) || 
+               (tabIndex === 1 && downloadLinks.key_preview_url && downloadLinks.key_preview_url.includes('_preview.html')) ? (
+                <Box>
+                  <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
+                    Loading HTML preview...
+                  </Typography>
+                  <iframe
+                    src={`/api/proxy-preview/${
+                      tabIndex === 0 
+                        ? downloadLinks.exam_preview_url!.split('/').pop()
+                        : downloadLinks.key_preview_url!.split('/').pop()
+                    }`}
+                    style={{ 
+                      width: "100%", 
+                      height: "600px", 
+                      border: "1px solid #e0e0e0",
+                      borderRadius: "4px"
+                    }}
+                    title={tabIndex === 0 ? "Exam Paper Preview" : "Answer Key Preview"}
+                    onLoad={(e) => {
+                      console.log('Iframe loaded successfully');
+                      const iframe = e.target as HTMLIFrameElement;
+                      console.log('Iframe src:', iframe.src);
+                    }}
+                    onError={(e) => {
+                      console.error('Iframe failed to load:', e);
+                    }}
+                  />
+                </Box>
               ) : (
                 <Box sx={{ textAlign: "center" }}>
                   <Typography variant="h6" gutterBottom>
                     {tabIndex === 0 ? "Exam Paper Preview" : "Answer Key Preview"}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Preview is currently being generated. Please try refreshing or download the file.
+                    HTML preview not available. The server is returning: {tabIndex === 0 ? downloadLinks.exam_preview_url : downloadLinks.key_preview_url}
                   </Typography>
                   <Button
                     variant="outlined"
@@ -220,7 +257,6 @@ export default function PreviewPage() {
                       }
                     }}
                     sx={{
-                      mt: 2,
                       borderColor: "#1e3a8a",
                       color: "#1e3a8a",
                       "&:hover": {
