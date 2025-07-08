@@ -1,26 +1,12 @@
 import { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Box, Typography, Paper } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import DescriptionIcon from '@mui/icons-material/Description';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 interface FileSelectProps {
   onFileSelect: (file: File) => void;
 }
-
-const UploadBox = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
-  border: '2px dashed',
-  borderColor: theme.palette.divider,
-  borderRadius: theme.shape.borderRadius,
-  textAlign: 'center',
-  cursor: 'pointer',
-  transition: 'all 0.3s ease-in-out',
-  '&:hover': {
-    borderColor: "#1E1E1E",
-    backgroundColor: theme.palette.action.hover,
-  },
-}));
 
 export default function FileUpload({ onFileSelect }: FileSelectProps) {
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -39,11 +25,22 @@ export default function FileUpload({ onFileSelect }: FileSelectProps) {
   });
 
   return (
-    <UploadBox
+    <Paper
       {...getRootProps()}
       sx={{
-        borderColor: isDragActive ? 'primary.main' : 'divider',
-        bgcolor: isDragActive ? 'action.hover' : 'background.paper',
+        bgcolor: '#e3e9f7',
+        border: '2px dashed #b0b8c9',
+        color: '#1a1a1a',
+        boxShadow: '0 2px 8px rgba(30,58,138,0.04)',
+        borderRadius: 2,
+        p: 3,
+        textAlign: 'center',
+        cursor: 'pointer',
+        transition: 'border-color 0.2s',
+        '&:hover': {
+          borderColor: '#1e3a8a',
+          backgroundColor: '#d2ddfa',
+        },
       }}
     >
       <input {...getInputProps()} />
@@ -67,6 +64,6 @@ export default function FileUpload({ onFileSelect }: FileSelectProps) {
           </Box>  
         )}
       </Box>
-    </UploadBox>
+    </Paper>
   );
 } 

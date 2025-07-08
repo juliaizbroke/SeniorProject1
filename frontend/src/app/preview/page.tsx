@@ -11,7 +11,7 @@ import {
   Tab,
 } from "@mui/material";
 import Navbar from "../../components/Navbar";
-import { getPreviewUrl, getDownloadUrl } from "../../utils/api";
+import { getDownloadUrl } from "../../utils/api";
 import { QuestionMetadata } from "../../types";
 
 export default function PreviewPage() {

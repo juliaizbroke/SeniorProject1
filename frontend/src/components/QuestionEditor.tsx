@@ -429,11 +429,14 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
   };  return (
     <Stack spacing={2}>      {/* Show warning only for significant ID collisions */}
       {hasIdCollisions && questions.length > 1 && (
-        <Box sx={{ 
-          p: 2, 
-          bgcolor: '#fef3c7', 
-          borderRadius: 1, 
-          border: '1px solid #fbbf24',
+        <Box sx={{
+          p: 2,
+          background: 'rgba(255,255,255,0.12)',
+          boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderRadius: 1,
+          border: '1px solid rgba(255,255,255,0.18)',
           display: 'flex',
           alignItems: 'center',
           gap: 2
@@ -446,11 +449,14 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
 
       {/* Show info about locks in other tabs */}
       {lockedQuestions.size > 0 && !questions.some((q, i) => lockedQuestions.has(getQuestionId(q, i))) && (
-        <Box sx={{ 
-          p: 2, 
-          bgcolor: '#dbeafe', 
-          borderRadius: 1, 
-          border: '1px solid #60a5fa',
+        <Box sx={{
+          p: 2,
+          background: 'rgba(255,255,255,0.12)',
+          boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderRadius: 1,
+          border: '1px solid rgba(255,255,255,0.18)',
           display: 'flex',
           alignItems: 'center',
           gap: 2
@@ -516,7 +522,12 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
               opacity: isLocked ? 0.8 : 1,
               borderColor: isLocked ? '#1e40af' : '#e2e8f0',
               borderWidth: isLocked ? '2px' : '1px',
-              backgroundColor: isLocked ? '#dbeafe' : '#f8fafc',
+              background: 'rgba(255,255,255,0.12)',
+              boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.18)',
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>

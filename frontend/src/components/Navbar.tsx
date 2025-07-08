@@ -30,7 +30,7 @@ const Navbar: React.FC = () => {
               fontFamily: "var(--sds-typography-title-hero-font-family)",
             }}
           >
-            ExamGen
+            Aurex
           </Typography>
         </Box>
         
