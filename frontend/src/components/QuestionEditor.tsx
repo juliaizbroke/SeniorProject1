@@ -22,7 +22,7 @@ import LockOpenIcon from '@mui/icons-material/LockOpen';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
 import { styled } from '@mui/material/styles';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface QuestionEditorProps {
   questions: Question[];
@@ -46,6 +46,38 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
   const [lockedQuestions, setLockedQuestions] = useState<Set<string>>(new Set());
   const [lockedCategories, setLockedCategories] = useState<Set<string>>(new Set()); // New state for category locks
   const [hasIdCollisions, setHasIdCollisions] = useState(false);
+  const hasAutoShuffled = useRef(false); // Track if auto-shuffle has been performed
+  const prevQuestionSetId = useRef<string>(''); // Track previous question set
+  
+  // Utility function to generate content hash for questions
+  const getContentHash = (question: Question) => {
+    const contentParts = [
+      `type:${question.type || 'unknown'}`,
+      `q:${question.question?.trim() || 'empty'}`,
+      `cat:${question.category?.trim() || 'no_category'}`,
+      `qtype:${question.q_type?.trim() || 'none'}`,
+      `img:${question.image?.trim() || 'none'}`,
+      `long:${question.is_long?.toString() || 'false'}`
+    ];
+    
+    // For non-MCQ questions, include the answer in the hash
+    if (question.type.toLowerCase() !== 'multiple choice' && question.type.toLowerCase() !== 'matching') {
+      contentParts.push(`ans:${question.answer?.trim() || 'no_answer'}`);
+    }
+    
+    if (question.type.toLowerCase() === 'multiple choice') {
+      contentParts.push(
+        `a:${question.a?.trim() || 'empty_a'}`,
+        `b:${question.b?.trim() || 'empty_b'}`,
+        `c:${question.c?.trim() || 'empty_c'}`,
+        `d:${question.d?.trim() || 'empty_d'}`,
+        `e:${question.e?.trim() || 'empty_e'}`
+      );
+    }
+    
+    return contentParts.join('||');
+  };
+  
   // Load locked questions from localStorage on component mount
   useEffect(() => {
     const savedLocks = localStorage.getItem('lockedQuestions');
@@ -103,6 +135,9 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       } else {
         setLockedCategories(new Set());
       }
+      
+      // Reset auto-shuffle flag when force refresh happens
+      hasAutoShuffled.current = false;
     }
   }, [forceRefreshLocks]);  // Save locked questions to localStorage whenever it changes
   useEffect(() => {
@@ -112,7 +147,9 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
   // Save locked categories to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('lockedCategories', JSON.stringify(Array.from(lockedCategories)));
-  }, [lockedCategories]);// Debug: Check for ID collisions
+  }, [lockedCategories]);
+
+  // Debug: Check for ID collisions
   useEffect(() => {
     const idMap = new Map<string, number>();
     const questionDetails = new Map<string, Question[]>();
@@ -249,15 +286,20 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
     
     // Get available pool excluding locked and current unlocked questions
     const getContentHash = (question: Question) => {
+      // Use the same hash logic as in shuffle function
       const contentParts = [
         `type:${question.type || 'unknown'}`,
         `q:${question.question?.trim() || 'empty'}`,
         `cat:${question.category?.trim() || 'no_category'}`,
-        `ans:${question.answer?.trim() || 'no_answer'}`,
         `qtype:${question.q_type?.trim() || 'none'}`,
         `img:${question.image?.trim() || 'none'}`,
         `long:${question.is_long?.toString() || 'false'}`
       ];
+      
+      // For non-MCQ questions, include the answer in the hash
+      if (question.type.toLowerCase() !== 'multiple choice' && question.type.toLowerCase() !== 'matching') {
+        contentParts.push(`ans:${question.answer?.trim() || 'no_answer'}`);
+      }
       
       if (question.type.toLowerCase() === 'multiple choice') {
         contentParts.push(
@@ -334,10 +376,225 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
     const lockedFakeAnswersWithIndex: { question: Question; index: number }[] = [];
     const unlockedFakeAnswersWithIndex: { question: Question; index: number }[] = [];
     
+    // Handle matching questions with special logic
+    const handleMatchingShuffleQuestions = (
+      unlockedQuestionsWithIndex: { question: Question; index: number }[],
+      lockedQuestionsWithIndex: { question: Question; index: number }[],
+      lockedFakeAnswersWithIndex: { question: Question; index: number }[],
+      unlockedFakeAnswersWithIndex: { question: Question; index: number }[]
+    ) => {
+      const shuffledQuestions = [...questions];
+      
+      // Get all locked real question content hashes
+      const lockedRealQuestionHashes = new Set<string>();
+      lockedQuestionsWithIndex.forEach(item => {
+        if (item.question.type !== 'fake answer') {
+          lockedRealQuestionHashes.add(getContentHash(item.question));
+        }
+      });
+      
+      // Get all original unlocked question content hashes
+      const originalUnlockedHashes = new Set<string>();
+      unlockedQuestionsWithIndex.forEach(item => {
+        originalUnlockedHashes.add(getContentHash(item.question));
+      });
+      
+      const usedQuestionHashes = new Set<string>();
+      
+      // Process unlocked real questions (matching type)
+      unlockedQuestionsWithIndex.forEach((unlockedItem) => {
+        const targetCategory = unlockedItem.question.category;
+        
+        // Find available questions from same category that are not locked and not currently selected
+        // Also exclude questions whose answers match locked fake answer texts
+        const availableFromSameCategory = allQuestionsPool.filter((q: Question) => {
+          const contentHash = getContentHash(q);
+          const answerText = q.answer?.trim().toLowerCase() || '';
+          
+          return q.category === targetCategory && 
+                 !lockedRealQuestionHashes.has(contentHash) && 
+                 !originalUnlockedHashes.has(contentHash) &&
+                 !usedQuestionHashes.has(contentHash) &&
+                 !lockedFakeAnswerTexts.has(answerText) && // Prevent duplication with locked fake answers
+                 q.type !== 'fake answer';
+        });
+        
+        if (availableFromSameCategory.length > 0) {
+          const randomQuestion = availableFromSameCategory[Math.floor(Math.random() * availableFromSameCategory.length)];
+          shuffledQuestions[unlockedItem.index] = randomQuestion;
+          usedQuestionHashes.add(getContentHash(randomQuestion));
+        }
+      });
+      
+      // For fake answers in matching questions, regenerate them based on new logic
+      const allRealAnswers = new Set<string>();
+      shuffledQuestions.forEach(q => {
+        if (q.type !== 'fake answer' && q.answer?.trim()) {
+          allRealAnswers.add(q.answer.trim().toLowerCase());
+        }
+      });
+      
+      // Also add locked fake answer answers to prevent duplication
+      // This ensures locked fake answers are not duplicated in unlocked fake answers
+      lockedFakeAnswersWithIndex.forEach(lockedFakeItem => {
+        if (lockedFakeItem.question.answer?.trim()) {
+          allRealAnswers.add(lockedFakeItem.question.answer.trim().toLowerCase());
+        }
+      });
+      
+      // Also add locked fake answer content hashes to prevent duplication
+      // Normal lock (blue lock) means the entire Q&A is locked and cannot be touched or used
+      const lockedFakeAnswerHashes = new Set<string>();
+      lockedFakeAnswersWithIndex.forEach(lockedFakeItem => {
+        lockedFakeAnswerHashes.add(getContentHash(lockedFakeItem.question));
+      });
+      
+      // Get all unselected Q&A from all categories (for fake answer selection)
+      // This includes both: 
+      // 1. Questions that were never selected (not in original unlocked or locked)
+      // 2. Original unlocked questions that were swapped out 
+      const allUnselectedQA = allQuestionsPool.filter((q: Question) => {
+        const contentHash = getContentHash(q);
+        return q.type !== 'fake answer' && 
+               !lockedRealQuestionHashes.has(contentHash) && 
+               !usedQuestionHashes.has(contentHash) && // Remove the originalUnlockedHashes filter
+               !lockedFakeAnswerHashes.has(contentHash); // Don't use locked fake answers as sources
+      });
+      
+      // Add the original unlocked questions back to the pool for fake answers
+      // since they were swapped out and are now available for fake answers
+      unlockedQuestionsWithIndex.forEach(item => {
+        const originalQuestion = item.question;
+        if (originalQuestion.type !== 'fake answer') {
+          // Double-check that this original question is not a locked fake answer
+          const originalContentHash = getContentHash(originalQuestion);
+          if (!lockedFakeAnswerHashes.has(originalContentHash)) {
+            allUnselectedQA.push(originalQuestion);
+          }
+        }
+      });
+      
+      const selectedFakeAnswers = new Set<string>();
+      
+      // Process unlocked fake answers
+      unlockedFakeAnswersWithIndex.forEach((fakeAnswerItem) => {
+        const originalCategory = fakeAnswerItem.question.category;
+        const fakeQuestionId = getQuestionId(fakeAnswerItem.question, fakeAnswerItem.index);
+        
+        // Skip fake answers that are currently being edited - they should not be affected by shuffling
+        if (editingQuestions.has(fakeQuestionId)) {
+          return; // Skip this fake answer, keep it unchanged
+        }
+        
+        // Skip fake answers that are manual and haven't been saved yet
+        // These are fake answers that need manual editing and haven't been properly saved
+        if (fakeAnswerItem.question.category === 'fake answers - manual' && 
+            (!fakeAnswerItem.question.answer || fakeAnswerItem.question.answer.trim() === '')) {
+          return; // Skip manual fake answers that haven't been filled in
+        }
+        
+        // Check if this specific fake answer's category is locked
+        const isCategoryLocked = lockedCategories.has(fakeQuestionId);
+        
+        if (isCategoryLocked) {
+          // Category is locked, can only change answer within same category
+          const categoryName = originalCategory?.replace('fake answers - ', '') || '';
+          const availableFromSameCategory = allUnselectedQA.filter((q: Question) => {
+            return q.category === categoryName &&
+                   !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') &&
+                   !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '');
+          });
+          
+          if (availableFromSameCategory.length > 0) {
+            const randomQuestion = availableFromSameCategory[Math.floor(Math.random() * availableFromSameCategory.length)];
+            const newFakeAnswer = { ...randomQuestion };
+            
+            newFakeAnswer.type = 'fake answer';
+            newFakeAnswer.category = `fake answers - ${randomQuestion.category}`;
+            newFakeAnswer.q_type = 'fake';
+            
+            shuffledQuestions[fakeAnswerItem.index] = newFakeAnswer;
+            if (randomQuestion.answer?.trim()) {
+              selectedFakeAnswers.add(randomQuestion.answer.trim().toLowerCase());
+            }
+          }
+          // If no available answers, keep the current fake answer unchanged
+        } else {
+          // Category not locked, select from all unselected Q&A
+          const availableForFakeAnswer = allUnselectedQA.filter((q: Question) => {
+            return !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') &&
+                   !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '');
+          });
+          
+          if (availableForFakeAnswer.length > 0) {
+            const randomQuestion = availableForFakeAnswer[Math.floor(Math.random() * availableForFakeAnswer.length)];
+            const newFakeAnswer = { ...randomQuestion };
+            
+            newFakeAnswer.type = 'fake answer';
+            newFakeAnswer.category = `fake answers - ${randomQuestion.category}`;
+            newFakeAnswer.q_type = 'fake';
+            
+            shuffledQuestions[fakeAnswerItem.index] = newFakeAnswer;
+            if (randomQuestion.answer?.trim()) {
+              selectedFakeAnswers.add(randomQuestion.answer.trim().toLowerCase());
+            }
+          } else {
+            // No more unselected Q&A available, set as manual/empty fake answer
+            const manualFakeAnswer = { ...fakeAnswerItem.question };
+            manualFakeAnswer.question = manualFakeAnswer.question || '';
+            manualFakeAnswer.answer = ''; // Clear the answer to make it empty
+            manualFakeAnswer.category = 'fake answers - manual';
+            manualFakeAnswer.type = 'fake answer';
+            manualFakeAnswer.q_type = 'fake';
+            
+            shuffledQuestions[fakeAnswerItem.index] = manualFakeAnswer;
+          }
+        }
+      });
+      
+      // Apply the changes
+      onQuestionsChange(shuffledQuestions);
+      
+      // Persist category locks for fake answers after shuffle
+      const updatedCategoryLocks = new Set<string>();
+      shuffledQuestions.forEach((question, index) => {
+        if (question.type === 'fake answer') {
+          const questionId = getQuestionId(question, index);
+          // Check if this fake answer was category locked before shuffle
+          const originalFakeAnswer = unlockedFakeAnswersWithIndex.find(item => item.index === index);
+          if (originalFakeAnswer) {
+            const originalQuestionId = getQuestionId(originalFakeAnswer.question, originalFakeAnswer.index);
+            if (lockedCategories.has(originalQuestionId)) {
+              updatedCategoryLocks.add(questionId);
+            }
+          }
+        }
+      });
+      
+      // Also preserve locked fake answers in category locks (they keep their locks)
+      lockedFakeAnswersWithIndex.forEach(({ question, index }) => {
+        const questionId = getQuestionId(question, index);
+        if (lockedCategories.has(questionId)) {
+          updatedCategoryLocks.add(questionId);
+        }
+      });
+      
+      // Update category locks state and localStorage
+      setLockedCategories(updatedCategoryLocks);
+      localStorage.setItem('lockedCategories', JSON.stringify([...updatedCategoryLocks]));
+    };
+    
     // Separate questions by lock state and type, preserving category lock info
     questions.forEach((question, index) => {
       const questionId = getQuestionId(question, index);
-      if (lockedQuestions.has(questionId)) {
+      
+      // Debug: Verify lock state is being respected
+      const isQuestionLocked = lockedQuestions.has(questionId);
+      const isCategoryLocked = lockedCategories.has(questionId);
+      
+      console.log(`Question ${index}: ${question.type} - Blue Lock: ${isQuestionLocked}, Category Lock: ${isCategoryLocked}`);
+      
+      if (isQuestionLocked) {
         if (question.type === 'fake answer') {
           lockedFakeAnswersWithIndex.push({ question, index });
         } else {
@@ -354,18 +611,68 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
     if (shuffleInfo.shuffleMode === 'disabled') {
       return; // Do nothing if shuffle is disabled
     }
+    
+    // Get locked fake answer texts to prevent duplication in real Q&A
+    const lockedFakeAnswerTexts = new Set<string>();
+    lockedFakeAnswersWithIndex.forEach(lockedFakeItem => {
+      if (lockedFakeItem.question.answer?.trim()) {
+        lockedFakeAnswerTexts.add(lockedFakeItem.question.answer.trim().toLowerCase());
+      }
+    });
+    
+    // Debug: Show locked question counts
+    console.log(`Shuffle Debug: ${lockedQuestionsWithIndex.length} locked real questions, ${lockedFakeAnswersWithIndex.length} locked fake answers`);
+    console.log(`Shuffle Debug: ${unlockedQuestionsWithIndex.length} unlocked real questions, ${unlockedFakeAnswersWithIndex.length} unlocked fake answers`);
+    console.log('Locked fake answer texts to exclude:', Array.from(lockedFakeAnswerTexts));
+      
+      // Debug: Show locked fake answer details
+      if (lockedFakeAnswersWithIndex.length > 0) {
+        console.log('Locked fake answers:', lockedFakeAnswersWithIndex.map(item => ({
+          index: item.index,
+          answer: item.question.answer?.substring(0, 50) || 'no answer',
+          category: item.question.category
+        })));
+      }
 
-    const getContentHash = (question: Question) => {
+    // Check if we have unlocked matching questions - if so, use new matching logic
+    const hasUnlockedMatchingQuestions = unlockedQuestionsWithIndex.some(item => 
+      item.question.type.toLowerCase() === 'matching'
+    );
+    
+    if (hasUnlockedMatchingQuestions) {
+      handleMatchingShuffleQuestions(
+        unlockedQuestionsWithIndex,
+        lockedQuestionsWithIndex,
+        lockedFakeAnswersWithIndex,
+        unlockedFakeAnswersWithIndex
+      );
+      return;
+    }
+
+    const getContentHashForShuffling = (question: Question) => {
+      // For fake answers, treat them as normal Q&A pairs for matching
+      // Use both question and answer in the hash for duplicate detection
+      if (question.type === 'fake answer') {
+        return `${question.question?.trim() || ''}|${question.answer?.trim() || ''}`;
+      }
+      
+      // For regular questions, use question text + category as primary identifier
       const contentParts = [
         `type:${question.type || 'unknown'}`,
         `q:${question.question?.trim() || 'empty'}`,
         `cat:${question.category?.trim() || 'no_category'}`,
-        `ans:${question.answer?.trim() || 'no_answer'}`,
         `qtype:${question.q_type?.trim() || 'none'}`,
         `img:${question.image?.trim() || 'none'}`,
         `long:${question.is_long?.toString() || 'false'}`
       ];
       
+      // For non-MCQ questions, include the answer in the hash
+      // For MCQ questions, we'll handle uniqueness differently
+      if (question.type.toLowerCase() !== 'multiple choice' && question.type.toLowerCase() !== 'matching') {
+        contentParts.push(`ans:${question.answer?.trim() || 'no_answer'}`);
+      }
+      
+      // For MCQ and matching, we still include choices to distinguish different versions
       if (question.type.toLowerCase() === 'multiple choice') {
         contentParts.push(
           `a:${question.a?.trim() || 'empty_a'}`,
@@ -379,48 +686,45 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       return contentParts.join('||');
     };
 
+    // Helper function to get all real question answers (for avoiding duplicates in fake answers)
+    const getAllRealAnswers = (shuffledQuestions: Question[]) => {
+      const realAnswers = new Set<string>();
+      
+      // Add locked real question answers
+      lockedQuestionsWithIndex.forEach(item => {
+        if (item.question.type !== 'fake answer' && item.question.answer?.trim()) {
+          realAnswers.add(item.question.answer.trim().toLowerCase());
+        }
+      });
+      
+      // Add unlocked real question answers (current state)
+      unlockedQuestionsWithIndex.forEach(item => {
+        const currentQuestion = shuffledQuestions[item.index];
+        if (currentQuestion.answer?.trim()) {
+          realAnswers.add(currentQuestion.answer.trim().toLowerCase());
+        }
+      });
+      
+      return realAnswers;
+    };
+
     if (shuffleInfo.shuffleMode === 'replace' && unlockedQuestionsWithIndex.length === 1) {
       // Replace single unlocked question with random question from same category
       const unlockedItem = unlockedQuestionsWithIndex[0];
       const targetCategory = unlockedItem.question.category;
 
       // Create sets to avoid duplication
-      const lockedRealQuestionHashes = new Set(lockedQuestionsWithIndex.filter(item => item.question.type !== 'fake answer').map(item => getContentHash(item.question)));
-      const currentUnlockedHashes = new Set([getContentHash(unlockedItem.question)]);
-      const lockedFakeAnswerHashes = new Set(lockedFakeAnswersWithIndex.map(item => getContentHash(item.question)));
-      
-      // Collect all current answers to avoid duplication
-      const allCurrentAnswers = new Set<string>();
-      
-      // Add locked real question answers
-      lockedQuestionsWithIndex.forEach(item => {
-        if (item.question.type !== 'fake answer' && item.question.answer?.trim()) {
-          allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-        }
-      });
-      
-      // Add locked fake answer answers
-      lockedFakeAnswersWithIndex.forEach(item => {
-        if (item.question.answer?.trim()) {
-          allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-        }
-      });
-      
-      // Add unlocked fake answer answers
-      unlockedFakeAnswersWithIndex.forEach(item => {
-        if (item.question.answer?.trim()) {
-          allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-        }
-      });
+      const lockedRealQuestionHashes = new Set(lockedQuestionsWithIndex.filter(item => item.question.type !== 'fake answer').map(item => getContentHashForShuffling(item.question)));
+      const originalUnlockedHashes = new Set([getContentHashForShuffling(unlockedItem.question)]);
+      const lockedFakeAnswerHashes = new Set(lockedFakeAnswersWithIndex.map(item => getContentHashForShuffling(item.question)));
       
       // Find available questions from the same category
       const availableFromSameCategory = allQuestionsPool.filter(q => {
-        const contentHash = getContentHash(q);
+        const contentHash = getContentHashForShuffling(q);
         return q.category === targetCategory && 
                !lockedRealQuestionHashes.has(contentHash) && 
-               !currentUnlockedHashes.has(contentHash) &&
+               !originalUnlockedHashes.has(contentHash) &&
                !lockedFakeAnswerHashes.has(contentHash) && // Don't duplicate locked fake answers
-               !allCurrentAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate any current answer
                q.type !== 'fake answer'; // Exclude fake answers from real question pool
       });
       
@@ -430,20 +734,8 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
         shuffledQuestions[unlockedItem.index] = randomReplacement;
         
         // Now handle fake answer shuffling for replace mode
-        // Collect all real question answers (locked + newly selected) to avoid duplication
-        const allRealAnswers = new Set<string>();
-        
-        // Add locked real question answers
-        lockedQuestionsWithIndex.forEach(item => {
-          if (item.question.type !== 'fake answer' && item.question.answer?.trim()) {
-            allRealAnswers.add(item.question.answer.trim().toLowerCase());
-          }
-        });
-        
-        // Add the newly selected question answer
-        if (randomReplacement.answer?.trim()) {
-          allRealAnswers.add(randomReplacement.answer.trim().toLowerCase());
-        }
+        // Use the helper function to get all real answers
+        const allRealAnswers = getAllRealAnswers(shuffledQuestions);
         
         // Keep track of fake answers selected to avoid duplicates among fake answers
         const selectedFakeAnswers = new Set<string>();
@@ -458,13 +750,28 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
         // PRIORITY 2: Process unlocked fake answers (includes category-locked ones)
         unlockedFakeAnswersWithIndex.forEach(fakeAnswerItem => {
           const fakeQuestionId = getQuestionId(fakeAnswerItem.question, fakeAnswerItem.index);
+          
+          // Skip fake answers that are currently being edited - they should not be affected by shuffling
+          if (editingQuestions.has(fakeQuestionId)) {
+            return; // Skip this fake answer, keep it unchanged
+          }
+          
+          // Skip fake answers that are manual and haven't been saved yet
+          if (fakeAnswerItem.question.category === 'fake answers - manual' && 
+              (!fakeAnswerItem.question.answer || fakeAnswerItem.question.answer.trim() === '')) {
+            return; // Skip manual fake answers that haven't been filled in
+          }
+          
           const isCategoryLocked = lockedCategories.has(fakeQuestionId);
           
           if (isCategoryLocked) {
             // If category is locked, only shuffle the answer within the same category
             const lockedCategory = fakeAnswerItem.question.category?.replace('fake answers - ', '') || '';
             const availableForFakeAnswer = allQuestionsPool.filter(q => {
+              const contentHash = getContentHashForShuffling(q);
               return q.category === lockedCategory &&
+                     !lockedRealQuestionHashes.has(contentHash) && // Don't use locked real questions as sources
+                     !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
                      !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
                      !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate fake answers
                      q.type !== 'fake answer'; // Don't use existing fake answers
@@ -486,7 +793,10 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
           } else {
             // Category not locked, can change both category and answer
             const availableForFakeAnswer = allQuestionsPool.filter(q => {
-              return !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
+              const contentHash = getContentHashForShuffling(q);
+              return !lockedRealQuestionHashes.has(contentHash) && // Don't use locked real questions as sources
+                     !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
+                     !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
                      !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate fake answers
                      q.type !== 'fake answer'; // Don't use existing fake answers
             });
@@ -544,22 +854,12 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       });
       
       // Handle fake answer shuffling for reorder mode
-      // Collect all real question answers (locked + reordered) to avoid duplication
-      const allRealAnswers = new Set<string>();
+      // Use the helper function to get all real answers
+      const allRealAnswers = getAllRealAnswers(shuffledQuestions);
       
-      // Add locked real question answers
-      lockedQuestionsWithIndex.forEach(item => {
-        if (item.question.type !== 'fake answer' && item.question.answer?.trim()) {
-          allRealAnswers.add(item.question.answer.trim().toLowerCase());
-        }
-      });
-      
-      // Add all current unlocked question answers (positions may have changed but questions are the same)
-      unlockedQuestionsWithIndex.forEach(item => {
-        if (item.question.answer?.trim()) {
-          allRealAnswers.add(item.question.answer.trim().toLowerCase());
-        }
-      });
+      // Create sets to avoid using locked questions as sources
+      const lockedRealQuestionHashes = new Set(lockedQuestionsWithIndex.filter(item => item.question.type !== 'fake answer').map(item => getContentHashForShuffling(item.question)));
+      const lockedFakeAnswerHashes = new Set(lockedFakeAnswersWithIndex.map(item => getContentHashForShuffling(item.question)));
       
       // Keep track of fake answers selected to avoid duplicates among fake answers
       const selectedFakeAnswers = new Set<string>();
@@ -574,13 +874,28 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       // PRIORITY 2: Process unlocked fake answers (includes category-locked ones)
       unlockedFakeAnswersWithIndex.forEach(fakeAnswerItem => {
         const fakeQuestionId = getQuestionId(fakeAnswerItem.question, fakeAnswerItem.index);
+        
+        // Skip fake answers that are currently being edited - they should not be affected by shuffling
+        if (editingQuestions.has(fakeQuestionId)) {
+          return; // Skip this fake answer, keep it unchanged
+        }
+        
+        // Skip fake answers that are manual and haven't been saved yet
+        if (fakeAnswerItem.question.category === 'fake answers - manual' && 
+            (!fakeAnswerItem.question.answer || fakeAnswerItem.question.answer.trim() === '')) {
+          return; // Skip manual fake answers that haven't been filled in
+        }
+        
         const isCategoryLocked = lockedCategories.has(fakeQuestionId);
         
         if (isCategoryLocked) {
           // If category is locked, only shuffle the answer within the same category
           const lockedCategory = fakeAnswerItem.question.category?.replace('fake answers - ', '') || '';
           const availableForFakeAnswer = allQuestionsPool.filter(q => {
+            const contentHash = getContentHashForShuffling(q);
             return q.category === lockedCategory &&
+                   !lockedRealQuestionHashes.has(contentHash) && // Don't use locked real questions as sources
+                   !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
                    !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
                    !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate fake answers
                    q.type !== 'fake answer'; // Don't use existing fake answers
@@ -602,7 +917,10 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
         } else {
           // Category not locked, can change both category and answer
           const availableForFakeAnswer = allQuestionsPool.filter(q => {
-            return !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
+            const contentHash = getContentHashForShuffling(q);
+            return !lockedRealQuestionHashes.has(contentHash) && // Don't use locked real questions as sources
+                   !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
+                   !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
                    !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate fake answers
                    q.type !== 'fake answer'; // Don't use existing fake answers
           });
@@ -645,103 +963,42 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
       setLockedCategories(updatedCategoryLocks);
       localStorage.setItem('lockedCategories', JSON.stringify([...updatedCategoryLocks]));
       return;
-    }    // Default 'fresh' mode - category-aware replacement
-    const lockedRealQuestionHashes = new Set(lockedQuestionsWithIndex.filter(item => item.question.type !== 'fake answer').map(item => getContentHash(item.question)));
-    const currentUnlockedHashes = new Set(unlockedQuestionsWithIndex.map(item => getContentHash(item.question)));
-    
-    // Collect all current answers to avoid duplication
-    const allCurrentAnswers = new Set<string>();
-    
-    // Add locked real question answers
-    lockedQuestionsWithIndex.forEach(item => {
-      if (item.question.type !== 'fake answer' && item.question.answer?.trim()) {
-        allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-      }
-    });
-    
-    // Add locked fake answer answers
-    lockedFakeAnswersWithIndex.forEach(item => {
-      if (item.question.answer?.trim()) {
-        allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-      }
-    });
-    
-    // Add unlocked real question answers
-    unlockedQuestionsWithIndex.forEach(item => {
-      if (item.question.answer?.trim()) {
-        allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-      }
-    });
-    
-    // Add unlocked fake answer answers
-    unlockedFakeAnswersWithIndex.forEach(item => {
-      if (item.question.answer?.trim()) {
-        allCurrentAnswers.add(item.question.answer.trim().toLowerCase());
-      }
-    });
+    }
+
+    // Default 'fresh' mode - category-aware replacement
+    const lockedRealQuestionHashes = new Set(lockedQuestionsWithIndex.filter(item => item.question.type !== 'fake answer').map(item => getContentHashForShuffling(item.question)));
+    const lockedFakeAnswerHashes = new Set(lockedFakeAnswersWithIndex.map(item => getContentHashForShuffling(item.question)));
+    const originalUnlockedHashes = new Set(unlockedQuestionsWithIndex.map(item => getContentHashForShuffling(item.question)));
     
     const shuffledQuestions = [...questions];
+    const usedQuestionHashes = new Set<string>(); // Track questions used in this shuffle
     
-    // STEP 1: Process each unlocked REAL question individually for category-aware replacement
-    unlockedQuestionsWithIndex.forEach(unlockedItem => {
+    // Process all unlocked real questions with the normal logic
+    unlockedQuestionsWithIndex.forEach((unlockedItem) => {
       const targetCategory = unlockedItem.question.category;
       
-      // Remove the old answer from our tracking set
-      if (unlockedItem.question.answer?.trim()) {
-        allCurrentAnswers.delete(unlockedItem.question.answer.trim().toLowerCase());
-      }
-      
-      // Find available questions from the same category (excluding locked, current unlocked, fake answers, and answer duplicates)
       const availableFromSameCategory = allQuestionsPool.filter(q => {
-        const contentHash = getContentHash(q);
+        const contentHash = getContentHashForShuffling(q);
         return q.category === targetCategory && 
                !lockedRealQuestionHashes.has(contentHash) && 
-               !currentUnlockedHashes.has(contentHash) &&
-               !allCurrentAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate any current answer
-               q.type !== 'fake answer'; // Exclude fake answers from real question pool
+               !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
+               !originalUnlockedHashes.has(contentHash) &&
+               !usedQuestionHashes.has(contentHash) &&
+               q.type !== 'fake answer';
       });
       
-      // Only replace if there are different questions available in the same category
       if (availableFromSameCategory.length > 0) {
         const randomQuestion = availableFromSameCategory[Math.floor(Math.random() * availableFromSameCategory.length)];
         shuffledQuestions[unlockedItem.index] = randomQuestion;
-        
-        // Update current unlocked hashes to avoid duplicates in subsequent iterations
-        currentUnlockedHashes.delete(getContentHash(unlockedItem.question));
-        currentUnlockedHashes.add(getContentHash(randomQuestion));
-        
-        // Add the new answer to our tracking set
-        if (randomQuestion.answer?.trim()) {
-          allCurrentAnswers.add(randomQuestion.answer.trim().toLowerCase());
-        }
-      } else {
-        // If no replacement found, add the original answer back
-        if (unlockedItem.question.answer?.trim()) {
-          allCurrentAnswers.add(unlockedItem.question.answer.trim().toLowerCase());
-        }
+        usedQuestionHashes.add(getContentHashForShuffling(randomQuestion));
       }
-      // If no different questions available from same category, keep the original question
-      // (This maintains the constraint that questions should only be replaced within their category)
     });
     
     // STEP 2: Handle fake answer shuffling separately - AFTER real questions have been shuffled
-    // Collect all current real answers to avoid duplication
-    const allRealAnswers = new Set<string>();
+    // This step handles all unlocked fake answers (both category-locked and unlocked)
     
-    // Add locked real question answers
-    lockedQuestionsWithIndex.forEach(item => {
-      if (item.question.type !== 'fake answer' && item.question.answer?.trim()) {
-        allRealAnswers.add(item.question.answer.trim().toLowerCase());
-      }
-    });
-    
-    // Add the NEW shuffled real question answers
-    unlockedQuestionsWithIndex.forEach(item => {
-      const newQuestion = shuffledQuestions[item.index];
-      if (newQuestion.answer?.trim()) {
-        allRealAnswers.add(newQuestion.answer.trim().toLowerCase());
-      }
-    });
+    // Use the helper function to get all real answers
+    const allRealAnswers = getAllRealAnswers(shuffledQuestions);
     
     // Keep track of fake answers selected in this shuffle to avoid duplicates among fake answers
     const selectedFakeAnswers = new Set<string>();
@@ -756,15 +1013,31 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
     // PRIORITY 2: Process unlocked fake answers (includes category-locked ones)
     unlockedFakeAnswersWithIndex.forEach(fakeAnswerItem => {
       const fakeQuestionId = getQuestionId(fakeAnswerItem.question, fakeAnswerItem.index);
+      
+      // Skip fake answers that are currently being edited - they should not be affected by shuffling
+      if (editingQuestions.has(fakeQuestionId)) {
+        return; // Skip this fake answer, keep it unchanged
+      }
+      
+      // Skip fake answers that are manual and haven't been saved yet
+      if (fakeAnswerItem.question.category === 'fake answers - manual' && 
+          (!fakeAnswerItem.question.answer || fakeAnswerItem.question.answer.trim() === '')) {
+        return; // Skip manual fake answers that haven't been filled in
+      }
+      
       const isCategoryLocked = lockedCategories.has(fakeQuestionId);
       
       if (isCategoryLocked) {
         // If category is locked, only shuffle the answer within the same category
-        const lockedCategory = fakeAnswerItem.question.category?.replace('fake answers - ', '') || '';
+        const originalCategory = fakeAnswerItem.question.category?.replace('fake answers - ', '') || '';
         const availableForFakeAnswer = allQuestionsPool.filter(q => {
-          return q.category === lockedCategory &&
+          const contentHash = getContentHashForShuffling(q);
+          return q.category === originalCategory &&
+                 !lockedRealQuestionHashes.has(contentHash) && // Don't use locked real questions as sources
+                 !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
                  !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
                  !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate fake answers
+                 !usedQuestionHashes.has(contentHash) && // Don't use questions already used in this shuffle
                  q.type !== 'fake answer'; // Don't use existing fake answers
         });
         
@@ -780,12 +1053,17 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
           if (randomReplacement.answer?.trim()) {
             selectedFakeAnswers.add(randomReplacement.answer.trim().toLowerCase());
           }
+          usedQuestionHashes.add(getContentHashForShuffling(randomReplacement));
         }
       } else {
         // Category not locked, can change both category and answer
         const availableForFakeAnswer = allQuestionsPool.filter(q => {
-          return !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
+          const contentHash = getContentHashForShuffling(q);
+          return !lockedRealQuestionHashes.has(contentHash) && // Don't use locked real questions as sources
+                 !lockedFakeAnswerHashes.has(contentHash) && // Don't use locked fake answers as sources
+                 !allRealAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate real answers
                  !selectedFakeAnswers.has(q.answer?.trim().toLowerCase() || '') && // Don't duplicate fake answers
+                 !usedQuestionHashes.has(contentHash) && // Don't use questions already used in this shuffle
                  q.type !== 'fake answer'; // Don't use existing fake answers
         });
         
@@ -801,9 +1079,9 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
           if (randomReplacement.answer?.trim()) {
             selectedFakeAnswers.add(randomReplacement.answer.trim().toLowerCase());
           }
+          usedQuestionHashes.add(getContentHashForShuffling(randomReplacement));
         }
       }
-      // If no alternatives available, keep the current fake answer
     });
     
     onQuestionsChange(shuffledQuestions);
@@ -835,11 +1113,66 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
     // Update category locks state and localStorage
     setLockedCategories(updatedCategoryLocks);
     localStorage.setItem('lockedCategories', JSON.stringify([...updatedCategoryLocks]));
-  };  const handleClearAllLocks = () => {
+  };
+
+  // Auto-shuffle matching questions on first load
+  useEffect(() => {
+    // Only run if we have questions loaded and haven't auto-shuffled yet
+    if (questions.length === 0 || hasAutoShuffled.current) return;
+    
+    // Check if we have matching questions
+    const hasMatchingQuestions = questions.some(q => q.type.toLowerCase() === 'matching');
+    
+    if (hasMatchingQuestions) {
+      // Check if we have unlocked matching questions that can be shuffled
+      const hasUnlockedMatchingQuestions = questions.some((question, index) => {
+        const questionId = getQuestionId(question, index);
+        return question.type.toLowerCase() === 'matching' && 
+               !lockedQuestions.has(questionId);
+      });
+      
+      if (hasUnlockedMatchingQuestions) {
+        // Only auto-shuffle if there are unlocked matching questions
+        console.log('Auto-shuffling matching questions on first load');
+        hasAutoShuffled.current = true; // Mark as auto-shuffled before calling shuffle
+        // Use setTimeout to ensure all state updates are processed before shuffling
+        setTimeout(() => {
+          handleShuffleQuestions();
+        }, 100);
+      }
+    }
+  }, [questions.length, questions.map(q => q.type).join('|')]); // Only run when questions array structure changes
+
+  // Reset auto-shuffle flag when questions array changes significantly (new question set loaded)
+  useEffect(() => {
+    // Create a stable identifier for the question set
+    const questionSetId = questions.length > 0 ? 
+      questions.map(q => `${q.type}_${q.question?.substring(0, 20) || 'empty'}`).join('|') : 
+      'empty';
+    
+    // Only reset if we've actually changed to a different question set
+    if (prevQuestionSetId.current !== '' && prevQuestionSetId.current !== questionSetId) {
+      console.log('Resetting auto-shuffle flag - question set changed');
+      hasAutoShuffled.current = false;
+    }
+    
+    prevQuestionSetId.current = questionSetId;
+  }, [questions]);
+
+  // Also reset auto-shuffle flag when component unmounts
+  useEffect(() => {
+    return () => {
+      hasAutoShuffled.current = false;
+    };
+  }, []);
+
+  const handleClearAllLocks = () => {
     setLockedQuestions(new Set());
     setLockedCategories(new Set());
     // Also clear any current editing states for consistency
     setEditingQuestions(new Set());
+    // Reset auto-shuffle flag when clearing locks
+    hasAutoShuffled.current = false;
   };
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSave = (questionId: string, index: number) => {
