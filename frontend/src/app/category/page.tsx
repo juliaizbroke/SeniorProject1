@@ -11,6 +11,7 @@ import {
   TextField,
 } from "@mui/material";
 import CategorySelection from "../../components/CategorySelection";
+import Navbar from "../../components/Navbar";
 import { Question, QuestionMetadata } from "../../types";
 
 export default function CategoryPage() {
@@ -55,39 +56,40 @@ export default function CategoryPage() {
   };
 
   return (
-    <Box sx={{ bgcolor: "#f9fafb", minHeight: "100vh", px: 4, py: 6 }}>
-      <Box sx={{ maxWidth: "1200px", mx: "auto" }}>
-        <Typography
-          variant="h4"
-          sx={{
-            fontWeight: 700,
-            mb: 2,
-            color: "#000",
-            fontFamily: "var(--sds-typography-title-hero-font-family)",
-          }}
-        >
-          Edit Exam Metadata & Select Questions by Category
-        </Typography>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 400,
-            mb: 4,
-            color: "#757575",
-            fontFamily: "var(--sds-typography-title-hero-font-family)",
-          }}
-        >
-          Choose the number of questions from each category to include in your exam.
-        </Typography>
+    <Box sx={{ bgcolor: '#e3e9f7', minHeight: '100vh', color: '#222', position: 'relative', overflow: 'hidden' }}>
+      <Navbar />
+      <Box sx={{ px: 4, py: 6, position: 'relative', zIndex: 1 }}>
+        <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
+          <Typography
+            variant="h4"
+            sx={{ color: "#1a1a1a", fontWeight: 700, mb: 2, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
+          >
+            Edit Exam Metadata & Select Questions by Category
+          </Typography>
+          <Typography
+            variant="subtitle1"
+            sx={{ color: "#333", fontWeight: 400, mb: 4, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
+          >
+            Choose the number of questions from each category to include in your exam.
+          </Typography>
           {metadata && (
           <Box
-            sx={{ bgcolor: "#fff", p: 4, borderRadius: 2, mb: 6, boxShadow: 1}}
+            sx={{
+              background: 'rgba(255,255,255,0.12)',
+              boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.18)',
+              p: 4,
+              mb: 6,
+            }}
           >
             <Typography variant="h5"
                 sx={{
                     fontWeight: 700,
                     mb: 2,
-                    color: "#000",
+                    color: "#1a1a1a",
                     fontFamily: "var(--sds-typography-title-hero-font-family)",
                 }}>
               Exam Details
@@ -118,14 +120,24 @@ export default function CategoryPage() {
                 { label: "Time", value: metadata.time, key: "time" },
               ].map((item, i) => (
                 <Box key={i}>
-                  <Typography  sx={{fontWeight:300, color:"#000", fontSize:"17px"}} gutterBottom>
+                  <Typography sx={{fontWeight:500, color:"#1a1a1a", fontSize:"16px"}} gutterBottom>
                     {item.label}
                   </Typography>
                   {item.editable === false ? (
-                    <Typography variant="caption" color="text.primary">{item.value}</Typography>
+                    <Typography variant="caption" color="#333">{item.value}</Typography>
                   ) : (
                     <TextField
                       fullWidth
+                      sx={{
+                        color: "#1a1a1a",
+                        "& .MuiInputBase-input": {
+                          color: "#333",
+                          
+                        },
+                        "& .MuiInputBase-input.Mui-disabled": {
+                          color: "#1a1a1a",
+                        },
+                      }}
                       size="small"
                       value={item.value}
                       onChange={(e) => {
@@ -140,7 +152,7 @@ export default function CategoryPage() {
             </Box>
           </Box>
         )} 
-        <Divider sx={{ my: 5}} />
+        <Divider sx={{ my: 5, borderColor: "#e2e8f0" }} />
         {metadata && (
           <CategorySelection
             questions={questions}
@@ -167,7 +179,8 @@ export default function CategoryPage() {
             {snackbar.message}
           </Alert>
         </Snackbar>
-        <Divider sx={{ my: 10}} />
+        <Divider sx={{ my: 10, borderColor: "#e2e8f0" }} />
+        </Box>
       </Box>
     </Box>
   );

@@ -34,10 +34,10 @@ interface QuestionEditorProps {
 const QuestionPaper = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
   marginBottom: theme.spacing(2),
-  border: '1px solid #e0e0e0',
+  border: '1px solid #e2e8f0',
   borderRadius: theme.spacing(1),
-  backgroundColor: '#ffffff',
-  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+  backgroundColor: '#f8fafc',
+  boxShadow: 'none',
 }));
 
 export default function QuestionEditor({ questions, allQuestionsPool, onQuestionsChange, forceRefreshLocks }: QuestionEditorProps) {
@@ -1206,16 +1206,19 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
   };  return (
     <Stack spacing={2}>      {/* Show warning only for significant ID collisions */}
       {hasIdCollisions && questions.length > 1 && (
-        <Box sx={{ 
-          p: 2, 
-          bgcolor: '#e8f4fd', 
-          borderRadius: 1, 
-          border: '1px solid #4682b4',
+        <Box sx={{
+          p: 2,
+          background: 'rgba(255,255,255,0.12)',
+          boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderRadius: 1,
+          border: '1px solid rgba(255,255,255,0.18)',
           display: 'flex',
           alignItems: 'center',
           gap: 2
         }}>
-          <Typography variant="body2" sx={{ color: '#2c5282', flex: 1 }}>
+          <Typography variant="body2" sx={{ color: '#1a1a1a', flex: 1 }}>
             ⚠️ Some questions have similar content and may share lock states. Check browser console for details.
           </Typography>
         </Box>
@@ -1223,17 +1226,20 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
 
       {/* Show info about locks in other tabs */}
       {lockedQuestions.size > 0 && !questions.some((q, i) => lockedQuestions.has(getQuestionId(q, i))) && (
-        <Box sx={{ 
-          p: 2, 
-          bgcolor: '#e8f4fd', 
-          borderRadius: 1, 
-          border: '1px solid #4682b4',
+        <Box sx={{
+          p: 2,
+          background: 'rgba(255,255,255,0.12)',
+          boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderRadius: 1,
+          border: '1px solid rgba(255,255,255,0.18)',
           display: 'flex',
           alignItems: 'center',
           gap: 2
         }}>
           <LockIcon sx={{ color: '#4682b4' }} />
-          <Typography variant="body2" sx={{ color: '#2c5282', flex: 1 }}>
+          <Typography variant="body2" sx={{ color: '#1a1a1a', flex: 1 }}>
             You have {lockedQuestions.size} locked question(s) in other tabs. They remain locked even when not visible.
           </Typography>
         </Box>
@@ -1265,11 +1271,11 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
               onClick={handleShuffleQuestions}
               disabled={!getShuffleInfo().canShuffle}
               sx={{
-                borderColor: getShuffleInfo().canShuffle ? '#000' : '#ccc',
-                color: getShuffleInfo().canShuffle ? '#000' : '#999',
+                borderColor: getShuffleInfo().canShuffle ? '#1e3a8a' : '#ccc',
+                color: getShuffleInfo().canShuffle ? '#1e3a8a' : '#999',
                 '&:hover': {
-                  borderColor: getShuffleInfo().canShuffle ? '#333' : '#ccc',
-                  backgroundColor: getShuffleInfo().canShuffle ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
+                  borderColor: getShuffleInfo().canShuffle ? '#1e40af' : '#ccc',
+                  backgroundColor: getShuffleInfo().canShuffle ? 'rgba(30, 58, 138, 0.04)' : 'transparent',
                 },
                 '&.Mui-disabled': {
                   borderColor: '#ccc',
@@ -1553,8 +1559,12 @@ export default function QuestionEditor({ questions, allQuestionsPool, onQuestion
               opacity: isLocked ? 0.8 : 1,
               borderColor: isLocked ? '#4682b4' : '#e0e0e0',
               borderWidth: isLocked ? '2px' : '1px',
-              backgroundColor: isLocked ? '#e8f4fd' : '#ffffff',
-              borderStyle: 'solid',
+              background: 'rgba(255,255,255,0.12)',
+              boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.18)',
             }}
           >
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>

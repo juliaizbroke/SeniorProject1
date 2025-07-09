@@ -14,6 +14,13 @@ load_dotenv()
 from processing.parser import parse_excel
 from processing.formatter import generate_word_files
 
+try:
+    import mammoth
+    HTML_CONVERSION_AVAILABLE = True
+except ImportError:
+    HTML_CONVERSION_AVAILABLE = False
+    print("Warning: mammoth not available. HTML preview will be disabled.")
+
 app = Flask(__name__)
 CORS(app)
 UPLOAD_FOLDER = "output"
@@ -78,6 +85,61 @@ def register_file_for_cleanup(file_path):
     file_registry[file_path] = time.time()
     cleanup_file_after_delay(file_path, FILE_EXPIRY_MINUTES)
 
+def convert_docx_to_html(docx_path):
+    """Convert DOCX file to HTML for preview"""
+    print(f"HTML_CONVERSION_AVAILABLE: {HTML_CONVERSION_AVAILABLE}")
+    print(f"Attempting to convert: {docx_path}")
+    
+    if not HTML_CONVERSION_AVAILABLE:
+        print("HTML conversion not available - mammoth not imported")
+        return None
+    
+    try:
+        html_path = docx_path.replace('.docx', '_preview.html')
+        print(f"HTML output path: {html_path}")
+        
+        with open(docx_path, "rb") as docx_file:
+            result = mammoth.convert_to_html(docx_file)
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Document Preview</title>
+                <style>
+                    body {{ 
+                        font-family: 'Times New Roman', serif; 
+                        line-height: 1.6; 
+                        max-width: 800px; 
+                        margin: 0 auto; 
+                        padding: 20px;
+                        background-color: white;
+                    }}
+                    h1, h2, h3 {{ color: #333; }}
+                    p {{ margin-bottom: 1em; }}
+                    table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
+                    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+                    th {{ background-color: #f5f5f5; }}
+                </style>
+            </head>
+            <body>
+                {result.html}
+            </body>
+            </html>
+            """
+        
+        with open(html_path, 'w', encoding='utf-8') as html_file:
+            html_file.write(html_content)
+        
+        print(f"HTML file created successfully: {html_path}")
+        register_file_for_cleanup(html_path)  # Also cleanup HTML files
+        return html_path
+    except Exception as e:
+        print(f"Error converting DOCX to HTML: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 @app.route("/", methods=["GET"])
 def health_check():
     return jsonify({"status": "API is running", "message": "Backend is healthy"})
@@ -117,18 +179,36 @@ def generate():
 
         exam_path, key_path = generate_word_files(questions, metadata, session_id)
         
-        # Register files for automatic cleanup
+        # Register Word files for automatic cleanup
         register_file_for_cleanup(exam_path)
         register_file_for_cleanup(key_path)
+        
+        # Create HTML versions for preview
+        print(f"Creating HTML previews for exam: {exam_path}, key: {key_path}")
+        exam_html_path = convert_docx_to_html(exam_path)
+        key_html_path = convert_docx_to_html(key_path)
+        
+        print(f"HTML conversion results - exam: {exam_html_path}, key: {key_html_path}")
         
         # Also run cleanup for any expired files
         cleanup_expired_files()
 
-        return jsonify({
+        response_data = {
             "exam_url": f"/download/{os.path.basename(exam_path)}",
             "key_url": f"/download/{os.path.basename(key_path)}",
             "expires_in_minutes": FILE_EXPIRY_MINUTES
-        })
+        }
+        
+        # Add preview URLs if HTML conversion was successful
+        if exam_html_path:
+            response_data["exam_preview_url"] = f"/preview/{os.path.basename(exam_html_path)}"
+            print(f"Added exam preview URL: {response_data['exam_preview_url']}")
+        if key_html_path:
+            response_data["key_preview_url"] = f"/preview/{os.path.basename(key_html_path)}"
+            print(f"Added key preview URL: {response_data['key_preview_url']}")
+            
+        print(f"Final response data: {response_data}")
+        return jsonify(response_data)
     except Exception as e:
         print(f"Error generating exam: {str(e)}")
         return jsonify({"error": f"Failed to generate exam: {str(e)}"}), 500
@@ -139,6 +219,30 @@ def download(filename):
     if not os.path.exists(file_path):
         return jsonify({"error": "File not found or has been cleaned up"}), 404
     return send_file(file_path, as_attachment=True)
+
+@app.route("/preview/<filename>")
+def preview(filename):
+    """Serve file for preview without triggering download"""
+    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found or has been cleaned up"}), 404
+    
+    # Determine mime type based on file extension
+    if filename.endswith('.html'):
+        mimetype = 'text/html'
+    elif filename.endswith('.pdf'):
+        mimetype = 'application/pdf'
+    elif filename.endswith('.docx'):
+        mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    else:
+        mimetype = 'application/octet-stream'
+    
+    # Set appropriate headers for inline viewing
+    return send_file(
+        file_path, 
+        as_attachment=False,
+        mimetype=mimetype
+    )
 
 @app.route("/cleanup", methods=["POST"])
 def manual_cleanup():

@@ -238,7 +238,15 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
       </Box>
       
       {Object.entries(questionGroups).map(([type, categories]) => (
-        <Accordion key={type} sx={{ mb: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <Accordion key={type} sx={{
+          mb: 2,
+          boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+          background: 'rgba(255,255,255,0.12)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          borderRadius: 2,
+          border: '1px solid rgba(255,255,255,0.18)',
+        }}>
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}
             sx={{ 
@@ -246,25 +254,32 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
               '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.05)' } 
             }}
           >
-            <Typography sx={{ textTransform: 'capitalize', fontWeight: 600 }}>
+            <Typography sx={{ textTransform: 'capitalize', fontWeight: 600, color: '#1a1a1a' }}>
               {type === 'written question' ? 'Written Questions' : type}
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
-            <TableContainer component={Paper} elevation={0}>
+            <TableContainer component={Paper} elevation={0} sx={{
+              background: 'rgba(255,255,255,0.12)',
+              boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              borderRadius: 2,
+              border: '1px solid rgba(255,255,255,0.18)',
+            }}>
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Available</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>Select</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#1a1a1a' }}>Category</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#1a1a1a' }}>Available</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: '#1a1a1a' }}>Select</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {Object.entries(categories).map(([category, questions]) => (
                     <TableRow key={category}>
-                      <TableCell>{category}</TableCell>
-                      <TableCell>{questions.length}</TableCell>
+                      <TableCell sx={{ color: '#333' }}>{category}</TableCell>
+                      <TableCell sx={{ color: '#333' }}>{questions.length}</TableCell>
                       <TableCell>
                         <TextField
                           type="number"
@@ -377,14 +392,14 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
         <Tooltip title="Apply your category selections and filter the question list">
           <Button 
             variant="contained" 
-            color="primary" 
             onClick={handleApplyFilters}
             startIcon={<FilterAltIcon />}
             sx={{
               float: 'right',
-              backgroundColor: '#000',
+              backgroundColor: '#1e3a8a',
+              color: '#fff',
               '&:hover': {
-                backgroundColor: '#333',
+                backgroundColor: '#3b5998',
               },
               borderRadius: '8px',
               px: 3

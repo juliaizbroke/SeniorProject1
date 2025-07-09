@@ -57,6 +57,12 @@ export function getDownloadUrl(path: string): string {
   return `${API_BASE_URL}${path}`;
 }
 
+export function getPreviewUrl(path: string): string {
+  // Convert download path to preview path
+  const previewPath = path.replace('/download/', '/preview/');
+  return `${API_BASE_URL}${previewPath}`;
+}
+
 export async function cleanupSessionFiles(sessionId: string): Promise<void> {
   try {
     const response = await fetch(`${API_BASE_URL}/cleanup/${sessionId}`, {
