@@ -15,6 +15,7 @@ def filter_and_randomize(questions, settings):
         "multiple choice": [],
         "true/false": [],
         "matching": [],
+        "fake answer": [],
         "written question": []
     }
     
@@ -101,36 +102,45 @@ def generate_word_files(questions, metadata, session_id):
         
     # For matching questions, we'll group them all into one matching exercise
     matching_questions = filtered.get("matching", [])
+    fake_answer_questions = filtered.get("fake answer", [])
     matching_items_count = 0  # Track the actual number of matching items
     
     if matching_questions:
-        # Extract all questions and answers
+        # Extract all questions and correct answers from matching questions
         questions_list = []
-        answers_list = []
+        correct_answers_list = []
         
         for q in matching_questions:
             questions_list.append(q["question"])
-            answers_list.append(q["answer"])
+            correct_answers_list.append(q["answer"])
         
         matching_items_count = len(questions_list)  # Set the count of matching items
         
-        # Create a copy of answers and shuffle them for column B
-        shuffled_answers = answers_list.copy()
-        random.shuffle(shuffled_answers)
+        # Get fake answers from the fake answer questions passed from edit page
+        fake_answers = []
+        for q in fake_answer_questions:
+            fake_answers.append(q["answer"])
+        
+        # Combine correct answers with fake answers for Column B
+        all_column_b_options = correct_answers_list.copy()
+        all_column_b_options.extend(fake_answers)
+        
+        # Shuffle all options (correct + fake) for column B
+        random.shuffle(all_column_b_options)
         
         # Add a single matching question with all items
         match_questions.append({
             "no": 1,
             "question": "Match the following",
             "column_a": questions_list,  # All questions in column A
-            "column_b": shuffled_answers  # All answers shuffled in column B
+            "column_b": all_column_b_options  # All answers (correct + fake) shuffled in column B
         })
         
         # Create individual answer entries for each matching item
         # This format will support the template format: 1 b, 2 a, 3 c, etc.
         match_answers = []
-        for i, original_answer in enumerate(answers_list):
-            answer_idx = shuffled_answers.index(original_answer)
+        for i, original_answer in enumerate(correct_answers_list):
+            answer_idx = all_column_b_options.index(original_answer)
             answer_letter = chr(65 + answer_idx).lower()  # Convert to lowercase letter (a, b, c, etc.)
             match_answers.append({"no": i+1, "ans": answer_letter})
 
