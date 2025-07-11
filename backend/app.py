@@ -94,44 +94,58 @@ def convert_docx_to_html(docx_path):
         print("HTML conversion not available - mammoth not imported")
         return None
     
+    if not os.path.exists(docx_path):
+        print(f"DOCX file does not exist: {docx_path}")
+        return None
+    
     try:
         html_path = docx_path.replace('.docx', '_preview.html')
         print(f"HTML output path: {html_path}")
         
         with open(docx_path, "rb") as docx_file:
             result = mammoth.convert_to_html(docx_file)
-            html_content = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>Document Preview</title>
-                <style>
-                    body {{ 
-                        font-family: 'Times New Roman', serif; 
-                        line-height: 1.6; 
-                        max-width: 800px; 
-                        margin: 0 auto; 
-                        padding: 20px;
-                        background-color: white;
-                    }}
-                    h1, h2, h3 {{ color: #333; }}
-                    p {{ margin-bottom: 1em; }}
-                    table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
-                    th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-                    th {{ background-color: #f5f5f5; }}
-                </style>
-            </head>
-            <body>
-                {result.html}
-            </body>
-            </html>
-            """
+            
+            # Check for conversion warnings
+            if hasattr(result, 'messages') and result.messages:
+                print(f"Conversion warnings: {result.messages}")
+            
+            # Get the HTML content - the correct attribute is 'value'
+            html_content_raw = result.value
+            print(f"HTML content length: {len(html_content_raw)} characters")
+            
+            html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Document Preview</title>
+    <style>
+        body {{ 
+            font-family: 'Times New Roman', serif; 
+            line-height: 1.6; 
+            max-width: 800px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: white;
+        }}
+        h1, h2, h3 {{ color: #333; }}
+        p {{ margin-bottom: 1em; }}
+        table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        th {{ background-color: #f5f5f5; }}
+        .question {{ margin: 1em 0; }}
+        .answer {{ font-weight: bold; }}
+    </style>
+</head>
+<body>
+    {html_content_raw}
+</body>
+</html>"""
         
         with open(html_path, 'w', encoding='utf-8') as html_file:
             html_file.write(html_content)
         
         print(f"HTML file created successfully: {html_path}")
+        print(f"HTML file size: {os.path.getsize(html_path)} bytes")
         register_file_for_cleanup(html_path)  # Also cleanup HTML files
         return html_path
     except Exception as e:
@@ -237,12 +251,18 @@ def preview(filename):
     else:
         mimetype = 'application/octet-stream'
     
-    # Set appropriate headers for inline viewing
-    return send_file(
+    # Set appropriate headers for inline viewing and iframe embedding
+    response = send_file(
         file_path, 
         as_attachment=False,
         mimetype=mimetype
     )
+    
+    # Add headers to allow iframe embedding
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Content-Security-Policy'] = "frame-ancestors 'self'"
+    
+    return response
 
 @app.route("/cleanup", methods=["POST"])
 def manual_cleanup():
@@ -276,6 +296,28 @@ def cleanup_session_files(session_id):
         })
     except Exception as e:
         return jsonify({"error": f"Failed to delete files: {str(e)}"}), 500
+
+@app.route("/debug/files")
+def debug_files():
+    """Debug endpoint to list files in output folder"""
+    try:
+        files = []
+        for filename in os.listdir(UPLOAD_FOLDER):
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            file_info = {
+                "filename": filename,
+                "size": os.path.getsize(file_path),
+                "exists": os.path.exists(file_path)
+            }
+            files.append(file_info)
+        
+        return jsonify({
+            "upload_folder": UPLOAD_FOLDER,
+            "files": files,
+            "html_conversion_available": HTML_CONVERSION_AVAILABLE
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

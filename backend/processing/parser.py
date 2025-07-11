@@ -118,6 +118,20 @@ def parse_excel(file):
             "category": row.get("category", "")
         })
 
+    # Fake Answers (for matching questions distractors)
+    try:
+        df_fake = xls.parse("FakeAnswers")
+        for _, row in df_fake.iterrows():
+            all_questions.append({
+                "type": "fake answer",
+                "question": row.get("question", ""),
+                "answer": row.get("ans", ""),
+                "category": row.get("category", "")
+            })
+    except Exception:
+        # If FakeAnswers sheet doesn't exist, skip it
+        pass
+
     # Written Question
     df_written = xls.parse("WrittenQuestion")
     for _, row in df_written.iterrows():

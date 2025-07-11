@@ -11,7 +11,7 @@ import {
   Tab,
 } from "@mui/material";
 import Navbar from "../../components/Navbar";
-import { getDownloadUrl } from "../../utils/api";
+import { getDownloadUrl, getPreviewUrl } from "../../utils/api";
 import { QuestionMetadata } from "../../types";
 
 export default function PreviewPage() {
@@ -23,6 +23,7 @@ export default function PreviewPage() {
     key_preview_url?: string; 
   } | null>(null);
   const [metadata, setMetadata] = useState<QuestionMetadata | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(true);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -30,13 +31,6 @@ export default function PreviewPage() {
     const keyUrl = searchParams.get('keyUrl');
     const examPreviewUrl = searchParams.get('examPreviewUrl');
     const keyPreviewUrl = searchParams.get('keyPreviewUrl');
-    
-    console.log('Preview page query params:', {
-      examUrl,
-      keyUrl,
-      examPreviewUrl,
-      keyPreviewUrl
-    });
     
     if (examUrl && keyUrl) {
       const links = {
@@ -46,24 +40,8 @@ export default function PreviewPage() {
         key_preview_url: keyPreviewUrl ? decodeURIComponent(keyPreviewUrl) : undefined
       };
       
-      console.log('Setting download links:', links);
-      console.log('Exam preview URL exists?', !!links.exam_preview_url);
-      console.log('Key preview URL exists?', !!links.key_preview_url);
-      
-      // If no preview URLs are provided, try to construct them from the download URLs
-      if (!links.exam_preview_url && links.exam_url) {
-        // Convert download URL to preview URL
-        links.exam_preview_url = links.exam_url.replace('/download/', '/preview/');
-        console.log('Generated exam preview URL:', links.exam_preview_url);
-      }
-      
-      if (!links.key_preview_url && links.key_url) {
-        // Convert download URL to preview URL
-        links.key_preview_url = links.key_url.replace('/download/', '/preview/');
-        console.log('Generated key preview URL:', links.key_preview_url);
-      }
-      
       setDownloadLinks(links);
+      setPreviewLoading(false);
     }
 
     // Get metadata from localStorage
@@ -75,6 +53,7 @@ export default function PreviewPage() {
 
   const handleTabChange = (_: unknown, newValue: number) => {
     setTabIndex(newValue);
+    setPreviewLoading(true); // Reset loading state when switching tabs
   };
 
   return (
@@ -202,51 +181,48 @@ export default function PreviewPage() {
         >
           {downloadLinks ? (
             <Box>
-              {/* Debug information */}
-              <Typography variant="caption" sx={{ mb: 2, display: 'block', color: '#666' }}>
-                Current tab: {tabIndex === 0 ? 'Exam Paper' : 'Answer Key'}<br/>
-                Preview URL available: {tabIndex === 0 ? (downloadLinks.exam_preview_url ? 'Yes' : 'No') : (downloadLinks.key_preview_url ? 'Yes' : 'No')}<br/>
-                {downloadLinks.exam_preview_url && `Exam Preview: ${downloadLinks.exam_preview_url}`}<br/>
-                {downloadLinks.key_preview_url && `Key Preview: ${downloadLinks.key_preview_url}`}
-              </Typography>
-              
-              {/* Show iframe only if we have HTML preview URLs */}
-              {(tabIndex === 0 && downloadLinks.exam_preview_url && downloadLinks.exam_preview_url.includes('_preview.html')) || 
-               (tabIndex === 1 && downloadLinks.key_preview_url && downloadLinks.key_preview_url.includes('_preview.html')) ? (
+              {/* Show iframe for HTML preview */}
+              {(tabIndex === 0 && downloadLinks.exam_preview_url) || 
+               (tabIndex === 1 && downloadLinks.key_preview_url) ? (
                 <Box>
                   <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
-                    Loading HTML preview...
+                    Preview of {tabIndex === 0 ? "Exam Paper" : "Answer Key"}
                   </Typography>
+                  {previewLoading && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                      <Typography color="#64748b">Loading preview...</Typography>
+                    </Box>
+                  )}
                   <iframe
-                    src={`/api/proxy-preview/${
+                    src={getPreviewUrl(
                       tabIndex === 0 
-                        ? downloadLinks.exam_preview_url!.split('/').pop()
-                        : downloadLinks.key_preview_url!.split('/').pop()
-                    }`}
+                        ? downloadLinks.exam_preview_url!
+                        : downloadLinks.key_preview_url!
+                    )}
                     style={{ 
                       width: "100%", 
-                      height: "600px", 
+                      height: "700px", 
                       border: "1px solid #e0e0e0",
-                      borderRadius: "4px"
+                      borderRadius: "8px",
+                      backgroundColor: "white",
+                      display: previewLoading ? 'none' : 'block'
                     }}
                     title={tabIndex === 0 ? "Exam Paper Preview" : "Answer Key Preview"}
-                    onLoad={(e) => {
-                      console.log('Iframe loaded successfully');
-                      const iframe = e.target as HTMLIFrameElement;
-                      console.log('Iframe src:', iframe.src);
+                    onLoad={() => {
+                      setPreviewLoading(false);
                     }}
-                    onError={(e) => {
-                      console.error('Iframe failed to load:', e);
+                    onError={() => {
+                      setPreviewLoading(false);
                     }}
                   />
                 </Box>
               ) : (
-                <Box sx={{ textAlign: "center" }}>
-                  <Typography variant="h6" gutterBottom>
+                <Box sx={{ textAlign: "center", py: 4 }}>
+                  <Typography variant="h6" gutterBottom color="#64748b">
                     {tabIndex === 0 ? "Exam Paper Preview" : "Answer Key Preview"}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    HTML preview not available. The server is returning: {tabIndex === 0 ? downloadLinks.exam_preview_url : downloadLinks.key_preview_url}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Preview is being generated. You can download the document below.
                   </Typography>
                   <Button
                     variant="outlined"
