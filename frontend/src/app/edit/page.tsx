@@ -6,7 +6,6 @@ import {
   Box,
   Typography,
   Button,
-  CircularProgress,
   Tab,
   Tabs,
   Divider,
@@ -15,16 +14,15 @@ import {
 } from "@mui/material";
 import QuestionEditor from "../../components/QuestionEditor";
 import Navbar from "../../components/Navbar";
-import { Question, QuestionMetadata, GenerateResponse} from "../../types";
-import { generateExam} from "../../utils/api";
+import { Question, QuestionMetadata } from "../../types";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [allQuestions, setAllQuestions] = useState<Question[]>([]); // Store full pool for shuffling
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [metadata, setMetadata] = useState<QuestionMetadata | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sessionId, setSessionId] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -33,6 +31,7 @@ export default function EditPage() {
   
   const router = useRouter();
   const [tabIndex, setTabIndex] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [lockRefreshTrigger, setLockRefreshTrigger] = useState(0);useEffect(() => {
     const q = localStorage.getItem("questions");
     const allQ = localStorage.getItem("allQuestions"); // Get full pool if available
@@ -61,69 +60,7 @@ export default function EditPage() {
     } else {
       router.replace("/");
     }
-  }, [router]);  const handleGenerate = async () => {
-    if (!metadata || !sessionId) return null;
-    
-    // Clear all question locks before generation to ensure all questions are included
-    const lockedQuestions = localStorage.getItem('lockedQuestions');
-    let hadLockedQuestions = false;
-    
-    if (lockedQuestions) {
-      try {
-        const lockedIds = JSON.parse(lockedQuestions);
-        if (lockedIds && lockedIds.length > 0) {          hadLockedQuestions = true;
-          localStorage.removeItem('lockedQuestions');
-          
-          // Force immediate UI update by triggering a re-render and refreshing QuestionEditor locks
-          // This ensures locked questions are visually shown as unlocked
-          setQuestions(prevQuestions => [...prevQuestions]);
-          setLockRefreshTrigger(prev => prev + 1); // Trigger QuestionEditor to refresh its lock state
-          
-          // Show notification about clearing locks
-          setSnackbar({
-            open: true,
-            message: `Cleared ${lockedIds.length} locked question(s) before generating exam documents.`,
-            severity: 'info'
-          });
-          
-          // Small delay to let user see the visual change
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      } catch (error) {
-        console.error('Error checking locked questions:', error);
-      }
-    }
-    
-    try {
-      setLoading(true);
-      setError("");
-      const response: GenerateResponse = await generateExam({
-        session_id: sessionId,
-        questions,
-        metadata,
-      });
-
-      
-      // Show success message with lock clearing info if applicable
-      if (hadLockedQuestions) {
-        setTimeout(() => {
-          setSnackbar({
-            open: true,
-            message: 'Exam generated successfully! All questions were included (locks cleared).',
-            severity: 'success'
-          });
-        }, 1000);
-      }
-      
-      return response;
-    } catch (err) {
-      setError("Failed to generate exam documents.");
-      console.error(err);
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [router]);
   // Function to get tab label based on index
   const getTabLabel = (index: number) => {
     const tabs = ["Multiple Choice", "True/False", "Matching", "Written"];
@@ -261,22 +198,6 @@ export default function EditPage() {
               />
             ))}
           </Tabs>
-          {error && (
-            <Box
-              sx={{
-                mb: 4,
-                p: 2,
-                background: 'rgba(255,255,255,0.12)',
-                boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                borderRadius: 2,
-                border: '1px solid rgba(255,255,255,0.18)',
-              }}
-            >
-              <Typography color="error">{error}</Typography>
-            </Box>
-          )}
           <QuestionEditor
             questions={getFilteredQuestions()}
             allQuestionsPool={getAllQuestionsOfCurrentType()}
@@ -289,27 +210,14 @@ export default function EditPage() {
                 variant="caption"
                 sx={{ color: '#333', fontStyle: 'italic', maxWidth: '300px', textAlign: 'right' }}
               >
-                Note: All question locks will be cleared before generating the exam to ensure all questions are included.
+                Review your questions and proceed to preview the exam structure before generating the final documents.
               </Typography>
               <Button
                 variant="contained"
-                onClick={async () => {
-                  const response = await handleGenerate();
-                  if (response) {
-                    const queryParams = new URLSearchParams({
-                      examUrl: encodeURIComponent(response.exam_url),
-                      keyUrl: encodeURIComponent(response.key_url)
-                    });
-                    if (response.exam_preview_url) {
-                      queryParams.append('examPreviewUrl', encodeURIComponent(response.exam_preview_url));
-                    }
-                    if (response.key_preview_url) {
-                      queryParams.append('keyPreviewUrl', encodeURIComponent(response.key_preview_url));
-                    }
-                    router.push(`/preview?${queryParams.toString()}`);
-                  }
+                onClick={() => {
+                  // Just navigate to preview page without generating files yet
+                  router.push('/preview');
                 }}
-                disabled={loading}
                 sx={{
                   height: '60px',
                   flexShrink: 0,
@@ -322,14 +230,8 @@ export default function EditPage() {
                   },
                 }}
               >
-                {loading ? (
-                  <CircularProgress size={20} color="inherit" />
-                ) : (
-                  <>
-                    Continue to Preview
-                    <TrendingFlatIcon sx={{ ml: 2 }} />
-                  </>
-                )}
+                Continue to Preview
+                <TrendingFlatIcon sx={{ ml: 2 }} />
               </Button>
             </Box>
           </Box>
