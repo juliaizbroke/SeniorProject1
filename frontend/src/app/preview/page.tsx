@@ -17,9 +17,11 @@ import {
   Alert,
 } from "@mui/material";
 import Navbar from "../../components/Navbar";
+
 import { getDownloadUrl, generateExam } from "../../utils/api";
 import { QuestionMetadata, Question, GenerateResponse } from "../../types";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
+
 
 export default function PreviewPage() {
   const [tabIndex, setTabIndex] = useState(0);
@@ -30,6 +32,7 @@ export default function PreviewPage() {
     key_preview_url?: string; 
   } | null>(null);
   const [metadata, setMetadata] = useState<QuestionMetadata | null>(null);
+
   const [questions, setQuestions] = useState<Question[]>([]);
   const [sessionId, setSessionId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -39,18 +42,23 @@ export default function PreviewPage() {
     message: '',
     severity: 'success' as 'success' | 'error' | 'info' | 'warning'
   });
+
   const searchParams = useSearchParams();
 
   useEffect(() => {
     const examUrl = searchParams.get('examUrl');
     const keyUrl = searchParams.get('keyUrl');
+
+
     
     if (examUrl && keyUrl) {
       const links = {
         exam_url: decodeURIComponent(examUrl),
         key_url: decodeURIComponent(keyUrl),
       };
+
       setDownloadLinks(links);
+      setPreviewLoading(false);
     }
 
     // Get metadata, questions, and sessionId from localStorage
@@ -73,6 +81,7 @@ export default function PreviewPage() {
 
   const handleTabChange = (_: unknown, newValue: number) => {
     setTabIndex(newValue);
+    setPreviewLoading(true); // Reset loading state when switching tabs
   };
 
   // Generate exam files function
@@ -432,6 +441,7 @@ export default function PreviewPage() {
         >
           {questions.length > 0 ? (
             <Box>
+
               {/* Exam Information Header */}
               <Paper elevation={2} sx={{ p: 4, mb: 4, bgcolor: 'white' }}>
                 <Typography variant="h4" sx={{ textAlign: 'center', mb: 3, color: '#1e3a8a', fontWeight: 700 }}>
@@ -506,6 +516,7 @@ export default function PreviewPage() {
                       </Typography>
                     </Box>
                   )}
+
                 </Box>
               </Box>
 
