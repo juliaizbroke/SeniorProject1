@@ -61,10 +61,35 @@ export default function EditPage() {
       router.replace("/");
     }
   }, [router]);
+  
+  // Reset tab index when questions change to ensure valid tab selection
+  useEffect(() => {
+    const availableTypes = getAvailableQuestionTypes();
+    if (tabIndex >= availableTypes.length) {
+      setTabIndex(0);
+    }
+  }, [questions, tabIndex]);
+  
+  // Function to get available question types based on current questions
+  const getAvailableQuestionTypes = () => {
+    const types = [];
+    const hasMultipleChoice = questions.some(q => q.type.toLowerCase() === "multiple choice");
+    const hasTrueFalse = questions.some(q => q.type.toLowerCase() === "true/false");
+    const hasMatching = questions.some(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
+    const hasWritten = questions.some(q => q.type.toLowerCase() === "written question");
+    
+    if (hasMultipleChoice) types.push("Multiple Choice");
+    if (hasTrueFalse) types.push("True/False");
+    if (hasMatching) types.push("Matching");
+    if (hasWritten) types.push("Written");
+    
+    return types;
+  };
+  
   // Function to get tab label based on index
   const getTabLabel = (index: number) => {
-    const tabs = ["Multiple Choice", "True/False", "Matching", "Written"];
-    return tabs[index] || "Multiple Choice";
+    const availableTypes = getAvailableQuestionTypes();
+    return availableTypes[index] || availableTypes[0] || "Multiple Choice";
   };
   // Function to filter questions based on selected tab
   const getFilteredQuestions = () => {
@@ -160,12 +185,12 @@ export default function EditPage() {
                 margin: '5px 2px',
                 backgroundColor: '#1e3a8a',
                 transition: 'all 0.3s ease-in-out',
-                boxShadow: '0 2px 4px rgba(30,58,138,0.18)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
               },
             }}
             sx={{
               mb: 2,
-              bgcolor: 'rgba(255,255,255,0.12)',
+              bgcolor: '#f1f5f9',
               borderRadius: 2,
               minHeight: '20px',
               '& .MuiTabs-flexContainer': {
@@ -174,15 +199,15 @@ export default function EditPage() {
               },
               '& .MuiTab-root': {
                 zIndex: 2,
-                color: '#b0c4de',
+                color: '#64748b',
                 '&.Mui-selected': {
-                  color: '#fff',
+                  color: 'white',
                   fontWeight: 600,
                 },
               },
             }}
           >
-            {['Multiple Choice', 'True/False', 'Matching', 'Written'].map((label) => (
+            {getAvailableQuestionTypes().map((label) => (
               <Tab
                 key={label}
                 label={label}
@@ -194,6 +219,11 @@ export default function EditPage() {
                   height: '40px',
                   borderRadius: 1,
                   transition: 'color 0.2s ease-in-out',
+                  color: '#64748b',
+                  '&.Mui-selected': {
+                    color: 'white',
+                    fontWeight: 600,
+                  },
                 }}
               />
             ))}
