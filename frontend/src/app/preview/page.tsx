@@ -58,7 +58,6 @@ export default function PreviewPage() {
       };
 
       setDownloadLinks(links);
-      setPreviewLoading(false);
     }
 
     // Get metadata, questions, and sessionId from localStorage
@@ -81,7 +80,6 @@ export default function PreviewPage() {
 
   const handleTabChange = (_: unknown, newValue: number) => {
     setTabIndex(newValue);
-    setPreviewLoading(true); // Reset loading state when switching tabs
   };
 
   // Generate exam files function
@@ -472,9 +470,6 @@ export default function PreviewPage() {
                       <Typography variant="body2" color="text.secondary">
                         Multiple Choice
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        questions selected
-                      </Typography>
                     </Box>
                   )}
                   {organizeQuestions().trueFalse.length > 0 && (
@@ -484,9 +479,6 @@ export default function PreviewPage() {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         True/False
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        questions selected
                       </Typography>
                     </Box>
                   )}
@@ -498,9 +490,6 @@ export default function PreviewPage() {
                       <Typography variant="body2" color="text.secondary">
                         Matching
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        questions selected
-                      </Typography>
                     </Box>
                   )}
                   {organizeQuestions().written.length > 0 && (
@@ -510,9 +499,6 @@ export default function PreviewPage() {
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Written
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        questions selected
                       </Typography>
                     </Box>
                   )}
