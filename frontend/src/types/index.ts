@@ -64,6 +64,11 @@ export interface GenerateRequest {
     types?: string[];
     categories?: string[];
   };
+  shuffledMatchingOrder?: {
+    allAnswers: string[];
+    correctAnswers: string[];
+    fakeAnswers: string[];
+  } | null;
 }
 
 export interface GenerateResponse {
