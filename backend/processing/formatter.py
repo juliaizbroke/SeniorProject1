@@ -2,7 +2,8 @@
 
 import os
 import random
-from docxtpl import DocxTemplate
+from docxtpl import DocxTemplate, InlineImage
+from docx.shared import Mm
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
@@ -62,7 +63,7 @@ def filter_and_randomize(questions, settings):
     
     return selected
 
-def generate_word_files(questions, metadata, session_id):
+def generate_word_files(questions, metadata, session_id, selected_template="default"):
     # Step 1: Filter & randomize if needed
     filtered = filter_and_randomize(questions, metadata.get("selection_settings", {}))
 
@@ -82,7 +83,32 @@ def generate_word_files(questions, metadata, session_id):
     # Set random seed based on current time to ensure different randomization each time
     random.seed()
     
+    # Determine which template to use for images based on selection
+    if selected_template == "uploaded":
+        uploaded_template_path = os.path.join(TEMPLATE_DIR, "uploaded_template.docx")
+        if os.path.exists(uploaded_template_path):
+            template_for_images = uploaded_template_path
+        else:
+            template_for_images = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+    else:
+        template_for_images = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+    
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
+        image_obj = None
+        print(f"[DEBUG] MCQ {i} image field: {q.get('image')}")
+        if q.get("image") and q.get("image") not in ["#VALUE!", "", "N/A", None]:
+            image_path = os.path.join(TEMPLATE_DIR, q["image"]) if not os.path.isabs(q["image"]) else q["image"]
+            print(f"[DEBUG] MCQ {i} resolved image_path: {image_path}")
+            if os.path.exists(image_path) and os.path.isfile(image_path):
+                try:
+                    image_obj = InlineImage(DocxTemplate(template_for_images), image_path, width=Mm(30))
+                    print(f"[DEBUG] MCQ {i} image loaded successfully")
+                except Exception as e:
+                    print(f"[DEBUG] MCQ {i} failed to load image: {e}")
+            else:
+                print(f"[DEBUG] MCQ {i} image file does not exist: {image_path}")
+        else:
+            print(f"[DEBUG] MCQ {i} skipping invalid/empty image field")
         mc_questions.append({
             "no": i,
             "question": q["question"],
@@ -91,7 +117,7 @@ def generate_word_files(questions, metadata, session_id):
             "c": q["c"],
             "d": q["d"],
             "e": q["e"],
-            "image": q.get("image", ""),
+            "image": image_obj,
             "long": q.get("is_long", False)
         })
         mc_answers.append({"no": i, "ans": q["answer"]})
@@ -150,6 +176,7 @@ def generate_word_files(questions, metadata, session_id):
     context = {
         "department": metadata.get("department", "AU"),
         **metadata,
+        "exam_metadata": metadata,  # Add exam_metadata for template compatibility
         "mc_no": len(mc_questions),
         "tf_no": len(tf_questions),
         "match_no": matching_items_count,  # Use the count of matching items instead of len(match_questions)
@@ -170,14 +197,41 @@ def generate_word_files(questions, metadata, session_id):
     }
 
     # Step 4: Render Word files
-    exam_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx"))
+    # Choose template based on user selection
+    if selected_template == "uploaded":
+        uploaded_template_path = os.path.join(TEMPLATE_DIR, "uploaded_template.docx")
+        if os.path.exists(uploaded_template_path):
+            exam_template_path = uploaded_template_path
+        else:
+            # Fallback to default if uploaded template doesn't exist
+            exam_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+            print("[WARNING] Uploaded template selected but not found, using default")
+    else:
+        # Use default template
+        exam_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+    
+    exam_tpl = DocxTemplate(exam_template_path)
     answer_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "exam-answerkey-tpl_clean.docx"))
 
     exam_path = os.path.join(OUTPUT_DIR, f"exam_{session_id}.docx")
     key_path = os.path.join(OUTPUT_DIR, f"answerkey_{session_id}.docx")
 
-    exam_tpl.render(context)
-    exam_tpl.save(exam_path)
+    print(f"[DEBUG] Using exam template: {exam_template_path}")
+    print(f"[DEBUG] Context keys: {list(context.keys())}")
+    
+    try:
+        exam_tpl.render(context)
+        exam_tpl.save(exam_path)
+        print(f"[DEBUG] Exam file saved successfully: {exam_path}")
+    except Exception as e:
+        print(f"[ERROR] Failed to render exam template: {e}")
+        # Try with the default template as fallback
+        print(f"[DEBUG] Falling back to default template")
+        default_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+        exam_tpl = DocxTemplate(default_template_path)
+        exam_tpl.render(context)
+        exam_tpl.save(exam_path)
+        print(f"[DEBUG] Exam file saved with default template: {exam_path}")
 
     answer_tpl.render(context)
     answer_tpl.save(key_path)
