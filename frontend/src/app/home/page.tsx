@@ -72,6 +72,19 @@ export default function HomePage() {
     }
   };
 
+  // Handle file upload with progress
+  const handleFileUpload = async (file: File): Promise<void> => {
+    // This is just for the progress display
+    // The actual upload happens when user clicks "Upload and Process" button
+    // So we'll just simulate success here
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        console.log(`File ${file.name} ready for processing`);
+        resolve();
+      }, 500);
+    });
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) return;
     try {
@@ -97,26 +110,81 @@ export default function HomePage() {
     <Box minHeight="100vh" sx={{ bgcolor: "#e3e9f7", color: "#222", position: "relative", overflow: "hidden" }}>
       <Navbar />
       <Box py={6} sx={{ position: "relative", zIndex: 1 }}>
-        <Box sx={{ px: 13 }}>
-          <Grid container justifyContent="space-between" alignItems="center" mb={2}>
-            <Grid item>
-              <Typography variant="h4" sx={{ color: "#1a1a1a", fontWeight: 700, lineHeight: 1.2, letterSpacing: 0.5 }}>
+        <Container maxWidth="xl" sx={{ px: 4 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
+          )}
+          <Grid container spacing={4} sx={{ minHeight: '60vh' }}>
+            {/* Left Half - Main Upload Section */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h4" sx={{ color: "#1a1a1a", fontWeight: 700, lineHeight: 1.2, letterSpacing: 0.5, mb: 1 }}>
                 Upload Excel File
               </Typography>
-              <Typography sx={{ fontSize: "15px", color: "#333", fontWeight: 400, lineHeight: 1.5 }}>
+              <Typography sx={{ fontSize: "15px", color: "#333", fontWeight: 400, lineHeight: 1.5, mb: 3 }}>
                 Upload your Excel file containing exam data
               </Typography>
-            </Grid>
-            <Grid item>
-              <Link href="/template.xlsx" underline="hover" fontWeight="bold" sx={{ color: "#1a1a1a", fontWeight: 700, lineHeight: 1.5, letterSpacing: 0.5 }}>
+              
+              <Link href="/template.xlsx" underline="hover" fontWeight="bold" sx={{ color: "#1a1a1a", fontWeight: 700, lineHeight: 1.5, letterSpacing: 0.5, mb: 3, display: 'block' }}>
                 Download Excel Template
               </Link>
+
+              {/* Requirements Section */}
+              <Box mb={3}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ color: "#1a1a1a" }}>
+                  Requirements
+                </Typography>
+                <ul style={{ marginLeft: "1rem", fontSize: "0.875rem" }}>
+                  <li>Sheet 1: Exam metadata (subject, lecturer, date, etc.)</li>
+                  <li>Sheet 2: Multiple Choice Questions</li>
+                  <li>Sheet 3: True/False</li>
+                  <li>Sheet 4: Matching</li>
+                  <li>Sheet 5: Short/Long Questions</li>
+                </ul>
+              </Box>
+
+              {/* File Upload */}
+              <Box mb={3}>
+                <FileUpload 
+                  onFileSelect={setSelectedFile} 
+                  selectedFile={selectedFile}
+                  onFileUpload={handleFileUpload}
+                  showProgress={true}
+                />
+              </Box>
+
+              {/* Upload Button */}
+              <Box textAlign="center">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  sx={{ height: "48px", textTransform: "none", bgcolor: "#1e3a8a", color: "#fff", fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: "#12264a" } }}
+                  disabled={!selectedFile || loading}
+                  onClick={handleUpload}
+                >
+                  {loading ? "Processing..." : "Upload and Process"}
+                </Button>
+              </Box>
+            </Grid>
+
+            {/* Right Half - Template Management */}
+            <Grid item xs={12} md={6}>
+              <Typography variant="h4" sx={{ color: "#1a1a1a", fontWeight: 700, lineHeight: 1.2, letterSpacing: 0.5, mb: 1 }}>
+                Exam Paper Template
+              </Typography>
+              <Typography sx={{ fontSize: "15px", color: "#333", fontWeight: 400, lineHeight: 1.5, mb: 3 }}>
+                Upload and manage your custom exam paper template
+              </Typography>
+
               {/* Upload Exam Paper Template Button */}
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box sx={{ mb: 3 }}>
                 <Button
                   variant="contained"
                   component="label"
-                  sx={{ ml: 2 }}
+                  fullWidth
+                  sx={{ height: "48px", textTransform: "none", bgcolor: "#059669", color: "#fff", fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: "#047857" } }}
                 >
                   Upload Exam Paper Template
                   <input
@@ -145,13 +213,14 @@ export default function HomePage() {
                     }}
                   />
                 </Button>
+                
                 {templateUploadStatus === 'success' && (
-                  <Typography sx={{ ml: 2, color: 'green', fontWeight: 500 }}>
+                  <Typography sx={{ mt: 2, color: 'green', fontWeight: 500, textAlign: 'center' }}>
                     Template uploaded: {uploadedTemplateName}
                   </Typography>
                 )}
                 {templateUploadStatus === 'error' && (
-                  <Typography sx={{ ml: 2, color: 'red', fontWeight: 500 }}>
+                  <Typography sx={{ mt: 2, color: 'red', fontWeight: 500, textAlign: 'center' }}>
                     Failed to upload template.
                   </Typography>
                 )}
@@ -159,8 +228,8 @@ export default function HomePage() {
               
               {/* Show uploaded template status */}
               {uploadedTemplateExists && (
-                <Box sx={{ mt: 2 }}>
-                  <Typography sx={{ color: 'green', fontWeight: 500 }}>
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'rgba(34, 197, 94, 0.1)', borderRadius: 2, border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                  <Typography sx={{ color: '#059669', fontWeight: 600, textAlign: 'center' }}>
                     ✓ Uploaded template exists: {uploadedTemplateName || "uploaded_template.docx"}
                   </Typography>
                 </Box>
@@ -168,15 +237,14 @@ export default function HomePage() {
               
               {/* Template Selection */}
               {uploadedTemplateExists && (
-                <Box sx={{ mt: 2 }}>
-                  <FormControl component="fieldset">
-                    <FormLabel component="legend" sx={{ fontWeight: 'bold', color: '#1a1a1a' }}>
+                <Box sx={{ mb: 3 }}>
+                  <FormControl component="fieldset" fullWidth>
+                    <FormLabel component="legend" sx={{ fontWeight: 'bold', color: '#1a1a1a', mb: 2 }}>
                       Choose Template:
                     </FormLabel>
                     <RadioGroup
                       value={selectedTemplate}
                       onChange={(e) => setSelectedTemplate(e.target.value as "default" | "uploaded")}
-                      row
                     >
                       <FormControlLabel 
                         value="default" 
@@ -195,9 +263,9 @@ export default function HomePage() {
                   <Button
                     variant="outlined"
                     color="error"
-                    size="small"
+                    fullWidth
                     onClick={deleteUploadedTemplate}
-                    sx={{ ml: 2 }}
+                    sx={{ mt: 2, textTransform: "none" }}
                   >
                     Delete Uploaded Template
                   </Button>
@@ -205,56 +273,6 @@ export default function HomePage() {
               )}
             </Grid>
           </Grid>
-        </Box>
-        <Container maxWidth="lg" sx={{ mt: 4 }}>
-          <Card className="glassy-card"
-          sx={{
-            background: 'rgba(255,255,255,0.12)',
-            boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
-            borderRadius: 2,
-            border: '1px solid rgba(255,255,255,0.18)',
-            p: 4,
-            mb: 6,
-          }}>
-            <CardContent>
-              {error && (
-                <Alert severity="error" sx={{ mb: 3 }}>
-                  {error}
-                </Alert>
-              )}
-              <Box mb={3}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ color: "#1a1a1a" }}>
-                  Requirements
-                </Typography>
-                <ul style={{ marginLeft: "1rem", fontSize: "0.875rem" }}>
-                  <li>Sheet 1: Exam metadata (subject, lecturer, date, etc.)</li>
-                  <li>Sheet 2: Multiple Choice Questions</li>
-                  <li>Sheet 3: True/False</li>
-                  <li>Sheet 4: Matching</li>
-                  <li>Sheet 5: Short/Long Questions</li>
-                </ul>
-              </Box>
-              {/* File Upload */}
-              <Box mb={3}>
-                <FileUpload onFileSelect={setSelectedFile} selectedFile={selectedFile} />
-              </Box>
-              {/* Upload Button */}
-              <Box textAlign="center">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  sx={{ height: "48px", textTransform: "none", bgcolor: "#1e3a8a", color: "#fff", fontWeight: 700, borderRadius: 2, '&:hover': { bgcolor: "#12264a" } }}
-                  disabled={!selectedFile || loading}
-                  onClick={handleUpload}
-                >
-                  {loading ? "Processing..." : "Upload and Process"}
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
         </Container>
       </Box>
     </Box>

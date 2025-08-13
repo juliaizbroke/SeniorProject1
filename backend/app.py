@@ -247,8 +247,9 @@ def generate():
         metadata = data['metadata']
         session_id = data['session_id']
         selected_template = data.get('selectedTemplate', 'default')  # Get template choice
+        shuffled_matching_order = data.get('shuffledMatchingOrder', None)  # Get shuffled order
 
-        exam_path, key_path = generate_word_files(questions, metadata, session_id, selected_template)
+        exam_path, key_path = generate_word_files(questions, metadata, session_id, selected_template, shuffled_matching_order)
         # Register Word files for automatic cleanup
         register_file_for_cleanup(exam_path)
         register_file_for_cleanup(key_path)
