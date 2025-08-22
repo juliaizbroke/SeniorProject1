@@ -23,15 +23,13 @@ interface FileUploadItem {
 }
 
 interface FileUploadProps {
-  onFileSelect: (file: File) => void;
-  selectedFile?: File | null;
+  onFileSelect: (file: File | null) => void;
   onFileUpload?: (file: File) => Promise<void>;
   showProgress?: boolean;
 }
 
 export default function FileUpload({ 
   onFileSelect, 
-  selectedFile = null,
   onFileUpload,
   showProgress = true 
 }: FileUploadProps) {
@@ -105,7 +103,7 @@ export default function FileUpload({
     }
   }, [onFileSelect, showProgress, simulateUpload, uploadItems.length]);
 
-  const removeFile = useCallback((fileId: string, event: React.MouseEvent) => {
+  const removeFile = useCallback((fileId: string, event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     
@@ -113,7 +111,7 @@ export default function FileUpload({
     setUploadItems(prev => prev.filter(item => item.id !== fileId));
     
     // Clear the selected file so the "Upload and Process" button becomes disabled
-    onFileSelect(null as any);
+    onFileSelect(null);
   }, [onFileSelect]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -218,70 +216,38 @@ export default function FileUpload({
                     
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       {item.status === 'completed' && (
-                        <CheckCircleIcon sx={{ color: '#10b981', fontSize: 20 }} />
+                        <CheckCircleIcon sx={{ color: '#059669' }} />
                       )}
                       {item.status === 'error' && (
-                        <ErrorIcon sx={{ color: '#ef4444', fontSize: 20 }} />
+                        <ErrorIcon color="error" />
                       )}
-                      <IconButton
-                        size="small"
+                      <IconButton 
+                        size="small" 
                         onClick={(e) => removeFile(item.id, e)}
-                        sx={{ color: '#64748b' }}
+                        sx={{ p: 0.5 }}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </Box>
                   </Box>
-                  
+
                   {/* Progress Bar */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={item.progress}
-                      sx={{
-                        flex: 1,
-                        height: 6,
-                        borderRadius: 3,
-                        bgcolor: '#e2e8f0',
-                        '& .MuiLinearProgress-bar': {
-                          bgcolor: item.status === 'error' ? '#ef4444' : '#1e3a8a',
-                          borderRadius: 3,
-                        },
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ color: '#64748b', minWidth: 40 }}>
-                      {item.status === 'completed' ? 'Done' : 
-                       item.status === 'error' ? 'Failed' : 
-                       `${item.progress}%`}
-                    </Typography>
-                  </Box>
-                  
-                  {/* Status Text */}
-                  <Typography variant="caption" sx={{ 
-                    color: item.status === 'completed' ? '#10b981' : 
-                           item.status === 'error' ? '#ef4444' : '#64748b',
-                    mt: 0.5,
-                    display: 'block'
-                  }}>
-                    {item.status === 'uploading' ? 'Uploading...' :
-                     item.status === 'completed' ? 'Upload completed successfully!' :
-                     'Upload failed'}
-                  </Typography>
+                  {showProgress && (
+                    <Box sx={{ mt: 1 }}>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={item.progress} 
+                        sx={{ height: 6, borderRadius: 1 }}
+                      />
+                      <Typography variant="caption" sx={{ color: '#757575' }}>
+                        {item.progress}%
+                      </Typography>
+                    </Box>
+                  )}
                 </CardContent>
               </Card>
             ))}
           </Box>
-          {/* Remove "Add another file" section since we only want one file */}
-        </Box>
-      )}
-
-      {/* Selected File Display (for backward compatibility when showProgress is false) */}
-      {selectedFile && !showProgress && (
-        <Box mt={2} display="flex" alignItems="center" justifyContent="center" gap={1}>
-          <CheckCircleIcon sx={{ color: '#1eaa3e' }} />
-          <Typography variant="body2" sx={{ color: '#1a1a1a', fontWeight: 500 }}>
-            {selectedFile.name} selected
-          </Typography>
         </Box>
       )}
     </Paper>

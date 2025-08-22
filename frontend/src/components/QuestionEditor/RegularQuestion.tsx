@@ -38,8 +38,8 @@ interface RegularQuestionProps {
   currentQuestion: Question;
   questionId: string;
   onQuestionChange: (index: number, field: keyof Question, value: string | boolean) => void;
-  onEdit: (questionId: string, index: number) => void;
-  onSave: (questionId: string, index: number) => void;
+  onEdit: (questionId: string) => void;
+  onSave: (questionId: string) => void;
   onCancel: (questionId: string) => void;
   onLockToggle: (questionId: string) => void;
 }
@@ -132,7 +132,7 @@ export default function RegularQuestion({
               <span>
                 <IconButton 
                   size="small" 
-                  onClick={() => onEdit(questionId, index)}
+                  onClick={() => onEdit(questionId)}
                   disabled={isLocked}
                   sx={{ 
                     p: 0.5,
@@ -150,7 +150,7 @@ export default function RegularQuestion({
             <Stack direction="row" spacing={0.5}>
               <IconButton 
                 size="small" 
-                onClick={() => onSave(questionId, index)}
+                onClick={() => onSave(questionId)}
                 color="primary"
                 sx={{ p: 0.5 }}
               >

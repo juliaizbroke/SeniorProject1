@@ -34,8 +34,8 @@ interface FakeAnswersProps {
   lockedCategories: Set<string>;
   getQuestionId: (question: Question, index: number) => string;
   onQuestionChange: (index: number, field: keyof Question, value: string | boolean) => void;
-  onEdit: (questionId: string, index: number) => void;
-  onSave: (questionId: string, index: number) => void;
+  onEdit: (questionId: string) => void;
+  onSave: (questionId: string) => void;
   onCancel: (questionId: string) => void;
   onLockToggle: (questionId: string) => void;
   onCategoryLockToggle: (questionId: string) => void;
@@ -288,7 +288,7 @@ export default function FakeAnswers({
                       <span>
                         <IconButton 
                           size="small" 
-                          onClick={() => onEdit(questionId, index)}
+                          onClick={() => onEdit(questionId)}
                           disabled={isLocked}
                           sx={{ 
                             p: 0.5,
@@ -306,7 +306,7 @@ export default function FakeAnswers({
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
                       <IconButton 
                         size="small" 
-                        onClick={() => onSave(questionId, index)}
+                        onClick={() => onSave(questionId)}
                         color="primary"
                         sx={{ p: 0.5 }}
                       >
