@@ -109,7 +109,7 @@ export default function HomePage() {
   return (
     <Box minHeight="100vh" sx={{ bgcolor: "#e3e9f7", color: "#222", position: "relative", overflow: "hidden" }}>
       <Navbar />
-      <Box py={6} sx={{ position: "relative", zIndex: 1 }}>
+      <Box py={6} sx={{ position: "relative", zIndex: 1, px:10 }}>
         <Container maxWidth="xl" sx={{ px: 4 }}>
           {error && (
             <Alert severity="error" sx={{ mb: 3 }}>
