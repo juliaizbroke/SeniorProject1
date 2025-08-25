@@ -68,6 +68,7 @@ export default function EditPage() {
     if (tabIndex >= availableTypes.length) {
       setTabIndex(0);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions, tabIndex]);
   
   // Function to get available question types based on current questions

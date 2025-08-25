@@ -145,6 +145,7 @@ export default function CategoryPage() {
                         setMetadata(updatedMetadata);
                         localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
                       }}
+                      spellCheck={true}
                     />
                   )}
                 </Box>
