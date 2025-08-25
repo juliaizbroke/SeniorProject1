@@ -11,6 +11,7 @@ const Navbar: React.FC = () => {
       sx={{ 
         backgroundColor: '#1e3a8a', // Navy blue
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        px: 10
       }}
     >
       <Toolbar sx={{ justifyContent: 'space-between' }}>

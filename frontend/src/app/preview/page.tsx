@@ -231,11 +231,28 @@ export default function PreviewPage() {
   );
 
   // Helper function to render matching questions
-  const renderMatchingQuestions = (questions: Question[], showAnswers: boolean) => {
-    if (questions.length === 0) return null;
+  const renderMatchingQuestions = (matchingQuestions: Question[], showAnswers: boolean) => {
+    if (matchingQuestions.length === 0) return null;
 
-    const answersArray = questions.map(q => q.answer);
-    const shuffledAnswers = [...answersArray].sort(); // Simple sort for demo, could use more complex shuffle
+    // Get the correct answers from matching questions
+    const correctAnswers = matchingQuestions.map(q => q.answer);
+    
+    // Get fake answers from fake answer questions
+    const fakeAnswers = questions.filter(q => q.type.toLowerCase() === 'fake answer')
+      .map(q => q.answer)
+      .filter(answer => answer && answer.trim()); // Filter out empty answers
+    
+    // Get all fake answer questions from the main questions array
+    const allFakeAnswers = questions.filter(q => q.type === 'fake answer')
+      .map(q => q.answer)
+      .filter(answer => answer && answer.trim()); // Filter out empty answers
+    
+    // Use the fake answers from the main questions state
+    const finalFakeAnswers = allFakeAnswers;
+    
+    // Combine correct answers with fake answers for Column B
+    const allColumnBOptions = [...correctAnswers, ...finalFakeAnswers];
+    const shuffledAnswers = [...allColumnBOptions].sort(() => Math.random() - 0.5); // Random shuffle
 
     return (
       <Paper elevation={1} sx={{ p: 3, mb: 2, border: '1px solid #e0e0e0' }}>
@@ -248,7 +265,7 @@ export default function PreviewPage() {
               Column A
             </Typography>
             <Stack spacing={1}>
-              {questions.map((question, index) => (
+              {matchingQuestions.map((question, index) => (
                 <Typography key={index}>
                   {index + 1}. {question.question}
                 </Typography>
@@ -262,7 +279,7 @@ export default function PreviewPage() {
             <Stack spacing={1}>
               {shuffledAnswers.map((answer, index) => (
                 <Typography key={index}>
-                  {String.fromCharCode(97 + index)}. {answer}
+                  {String.fromCharCode(65 + index)}. {answer}
                 </Typography>
               ))}
             </Stack>
@@ -273,9 +290,9 @@ export default function PreviewPage() {
             <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
               Answers:
             </Typography>
-            {questions.map((question, index) => {
+            {matchingQuestions.map((question, index) => {
               const answerIndex = shuffledAnswers.indexOf(question.answer);
-              const answerLetter = String.fromCharCode(97 + answerIndex);
+              const answerLetter = String.fromCharCode(65 + answerIndex);
               return (
                 <Typography key={index} sx={{ fontSize: '0.9rem' }}>
                   {index + 1}. {answerLetter}

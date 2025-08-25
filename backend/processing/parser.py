@@ -3,6 +3,9 @@
 import pandas as pd
 from io import BytesIO
 import datetime
+import openpyxl
+from openpyxl_image_loader import SheetImageLoader
+import os
 from .duplicate_detector import QuestionDuplicateDetector
 import logging
 
@@ -90,22 +93,48 @@ def parse_excel(file, remove_duplicates=True, similarity_threshold=0.8):
 
     # Multiple Choice
     df_mc = xls.parse("MultipleChoice")
-    for idx, row in df_mc.iterrows():
+    # Load workbook and sheet with openpyxl for image extraction
+    wb = openpyxl.load_workbook(file)
+    ws = wb["MultipleChoice"]
+    image_loader = SheetImageLoader(ws)
+    # Map column names to indices
+    col_map = {cell.value: idx for idx, cell in enumerate(next(ws.iter_rows(min_row=1, max_row=1)), 0)}
+    images_dir = os.path.join(os.path.dirname(__file__), "templates", "images")
+    os.makedirs(images_dir, exist_ok=True)
+    # Print all coordinates where images are found
+    print(f"[DEBUG] ImageLoader found images at: {list(image_loader._images.keys())}")
+    for i, row in enumerate(df_mc.itertuples(index=False), 2):  # DataFrame is 0-based, Excel is 1-based, skip header
         # Check if any option has length >= 20
-        options = [str(row.get(opt, "")) for opt in ['a', 'b', 'c', 'd', 'e']]
+        options = [str(getattr(row, opt, "")) for opt in ['a', 'b', 'c', 'd', 'e']]
         is_long = any(len(opt) >= 20 for opt in options)
-        
-       
+        # Extract image if present
+        image_path = ""
+        if "image" in col_map:
+            excel_col_idx = col_map["image"]
+            cell = ws.cell(row=i, column=excel_col_idx+1)  # openpyxl is 1-based
+            print(f"[DEBUG] Checking cell for image: {cell.coordinate}")
+            if image_loader.image_in(cell.coordinate):
+                img = image_loader.get(cell.coordinate)
+                image_path = os.path.join(images_dir, f"mcq_{i}.png")
+                img.save(image_path)
+                image_path = os.path.relpath(image_path, os.path.dirname(__file__))
+                print(f"[DEBUG] Parsed image for MCQ row {i}: {image_path}")
+            else:
+                val = cell.value
+                if val and isinstance(val, str):
+                    image_path = val
+                    print(f"[DEBUG] Parsed legacy image path for MCQ row {i}: {image_path}")
         all_questions.append({
             "type": "multiple choice",
-            "question": row.get("question", ""),
-            "a": row.get("a", ""),
-            "b": row.get("b", ""),
-            "c": row.get("c", ""),
-            "d": row.get("d", ""),
-            "e": row.get("e", ""),
-            "answer": row.get("ans", ""),
-            "category": row.get("category", ""),
+            "question": getattr(row, "question", ""),
+            "a": getattr(row, "a", ""),
+            "b": getattr(row, "b", ""),
+            "c": getattr(row, "c", ""),
+            "d": getattr(row, "d", ""),
+            "e": getattr(row, "e", ""),
+            "answer": getattr(row, "ans", ""),
+            "category": getattr(row, "category", ""),
+            "image": image_path,
             "is_long": is_long
         })
 

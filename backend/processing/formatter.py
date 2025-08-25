@@ -2,7 +2,10 @@
 
 import os
 import random
-from docxtpl import DocxTemplate
+from docxtpl import DocxTemplate, InlineImage, RichText
+from docx.shared import Mm
+from docx import Document
+from docx.enum.text import WD_BREAK
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
@@ -62,9 +65,16 @@ def filter_and_randomize(questions, settings):
     
     return selected
 
-def generate_word_files(questions, metadata, session_id):
+def generate_word_files(questions, metadata, session_id, selected_template="default", shuffled_matching_order=None):
+    print(f"[DEBUG] generate_word_files called with {len(questions)} questions")
+    print(f"[DEBUG] Question types: {[q.get('type', 'unknown') for q in questions]}")
+    
     # Step 1: Filter & randomize if needed
     filtered = filter_and_randomize(questions, metadata.get("selection_settings", {}))
+    
+    print(f"[DEBUG] After filtering:")
+    for qtype, qlist in filtered.items():
+        print(f"[DEBUG]   {qtype}: {len(qlist)} questions")
 
     # Step 2: Format for Word templates
     mc_questions = []
@@ -82,7 +92,32 @@ def generate_word_files(questions, metadata, session_id):
     # Set random seed based on current time to ensure different randomization each time
     random.seed()
     
+    # Determine which template to use for images based on selection
+    if selected_template == "uploaded":
+        uploaded_template_path = os.path.join(TEMPLATE_DIR, "uploaded_template.docx")
+        if os.path.exists(uploaded_template_path):
+            template_for_images = uploaded_template_path
+        else:
+            template_for_images = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+    else:
+        template_for_images = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+    
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
+        image_obj = None
+        print(f"[DEBUG] MCQ {i} image field: {q.get('image')}")
+        if q.get("image") and q.get("image") not in ["#VALUE!", "", "N/A", None]:
+            image_path = os.path.join(TEMPLATE_DIR, q["image"]) if not os.path.isabs(q["image"]) else q["image"]
+            print(f"[DEBUG] MCQ {i} resolved image_path: {image_path}")
+            if os.path.exists(image_path) and os.path.isfile(image_path):
+                try:
+                    image_obj = InlineImage(DocxTemplate(template_for_images), image_path, width=Mm(30))
+                    print(f"[DEBUG] MCQ {i} image loaded successfully")
+                except Exception as e:
+                    print(f"[DEBUG] MCQ {i} failed to load image: {e}")
+            else:
+                print(f"[DEBUG] MCQ {i} image file does not exist: {image_path}")
+        else:
+            print(f"[DEBUG] MCQ {i} skipping invalid/empty image field")
         mc_questions.append({
             "no": i,
             "question": q["question"],
@@ -91,7 +126,7 @@ def generate_word_files(questions, metadata, session_id):
             "c": q["c"],
             "d": q["d"],
             "e": q["e"],
-            "image": q.get("image", ""),
+            "image": image_obj,
             "long": q.get("is_long", False)
         })
         mc_answers.append({"no": i, "ans": q["answer"]})
@@ -105,7 +140,7 @@ def generate_word_files(questions, metadata, session_id):
     fake_answer_questions = filtered.get("fake answer", [])
     matching_items_count = 0  # Track the actual number of matching items
     
-    if matching_questions:
+    if matching_questions and len(matching_questions) > 0:
         # Extract all questions and correct answers from matching questions
         questions_list = []
         correct_answers_list = []
@@ -119,7 +154,9 @@ def generate_word_files(questions, metadata, session_id):
         # Get fake answers from the fake answer questions passed from edit page
         fake_answers = []
         for q in fake_answer_questions:
-            fake_answers.append(q["answer"])
+            # Only include fake answers that are not empty, None, or just whitespace
+            if q.get("answer") and str(q["answer"]).strip():
+                fake_answers.append(q["answer"])
         
         # Combine correct answers with fake answers for Column B
         all_column_b_options = correct_answers_list.copy()
@@ -143,13 +180,140 @@ def generate_word_files(questions, metadata, session_id):
             answer_idx = all_column_b_options.index(original_answer)
             answer_letter = chr(65 + answer_idx).lower()  # Convert to lowercase letter (a, b, c, etc.)
             match_answers.append({"no": i+1, "ans": answer_letter})
+    else:
+        # Ensure empty lists when no matching questions exist
+        match_questions = []
+        match_answers = []
+        matching_items_count = 0
 
-    # ...existing code for written questions...
+    # Process written questions - separate into short and long based on q_type
+    sq_counter = 1
+    lq_counter = 1
+    
+    print(f"[DEBUG] Processing {len(filtered.get('written question', []))} written questions")
+    
+    for q in filtered.get("written question", []):
+        q_type = q.get("q_type", "").lower().strip()
+        print(f"[DEBUG] Written question q_type: '{q_type}' | question: '{q['question'][:50]}...'")
+        
+        # Determine if it's a short or long question based on q_type
+        if q_type == "short":
+            question_data = {
+                "no": sq_counter,
+                "question": q["question"],
+                "category": q.get("category", "")
+            }
+            answer_data = {
+                "no": sq_counter,
+                "ans": q["answer"]
+            }
+            sq_questions.append(question_data)
+            sq_answers.append(answer_data)
+            sq_counter += 1
+            print(f"[DEBUG] Added as short question #{sq_counter-1}")
+        elif q_type == "long":
+            question_data = {
+                "no": lq_counter,
+                "question": q["question"],
+                "category": q.get("category", "")
+            }
+            answer_data = {
+                "no": lq_counter,
+                "ans": q["answer"]
+            }
+            lq_questions.append(question_data)
+            lq_answers.append(answer_data)
+            lq_counter += 1
+            print(f"[DEBUG] Added as long question #{lq_counter-1}")
+        else:
+            # Default behavior: if q_type is not specified, treat as short question
+            question_data = {
+                "no": sq_counter,
+                "question": q["question"],
+                "category": q.get("category", "")
+            }
+            answer_data = {
+                "no": sq_counter,
+                "ans": q["answer"]
+            }
+            sq_questions.append(question_data)
+            sq_answers.append(answer_data)
+            sq_counter += 1
+            print(f"[DEBUG] Added as short question (default) #{sq_counter-1}")
+    
+    print(f"[DEBUG] Final counts - Short: {len(sq_questions)}, Long: {len(lq_questions)}")
+    print(f"[DEBUG] Section counts - MC: {len(mc_questions)}, TF: {len(tf_questions)}, Match: {matching_items_count}, SQ: {len(sq_questions)}, LQ: {len(lq_questions)}")
+
+    # Calculate part numbers dynamically based on which sections have content
+    part_counter = 1
+    part_numbers = {}
+    roman_numerals = ['I', 'II', 'III', 'IV', 'V']
+    
+    # Initialize all part variables with empty strings first
+    part_numbers['mc_part'] = ''
+    part_numbers['tf_part'] = ''
+    part_numbers['match_part'] = ''
+    part_numbers['sq_part'] = ''
+    part_numbers['lq_part'] = ''
+    part_numbers['has_mc'] = False
+    part_numbers['has_tf'] = False
+    part_numbers['has_match'] = False
+    part_numbers['has_sq'] = False
+    part_numbers['has_lq'] = False
+    
+    # Now assign part numbers only to sections that exist
+    if len(mc_questions) > 0:
+        part_numbers['mc_part'] = roman_numerals[part_counter - 1]
+        part_numbers['has_mc'] = True
+        part_counter += 1
+    
+    if len(tf_questions) > 0:
+        part_numbers['tf_part'] = roman_numerals[part_counter - 1]
+        part_numbers['has_tf'] = True
+        part_counter += 1
+    
+    if matching_items_count > 0:
+        part_numbers['match_part'] = roman_numerals[part_counter - 1]
+        part_numbers['has_match'] = True
+        part_counter += 1
+    
+    if len(sq_questions) > 0:
+        part_numbers['sq_part'] = roman_numerals[part_counter - 1]
+        part_numbers['has_sq'] = True
+        part_counter += 1
+    
+    if len(lq_questions) > 0:
+        part_numbers['lq_part'] = roman_numerals[part_counter - 1]
+        part_numbers['has_lq'] = True
+        part_counter += 1
+    
+    # Calculate next part numbers for "Continue to Part X" messages
+    sections = []
+    if part_numbers['has_mc']:
+        sections.append(('mc', part_numbers['mc_part']))
+    if part_numbers['has_tf']:
+        sections.append(('tf', part_numbers['tf_part']))
+    if part_numbers['has_match']:
+        sections.append(('match', part_numbers['match_part']))
+    if part_numbers['has_sq']:
+        sections.append(('sq', part_numbers['sq_part']))
+    if part_numbers['has_lq']:
+        sections.append(('lq', part_numbers['lq_part']))
+    
+    # Set "next part" variables
+    for i, (section_type, part_num) in enumerate(sections):
+        if i < len(sections) - 1:  # Not the last section
+            next_section_type, next_part_num = sections[i + 1]
+            part_numbers[f'next_after_{section_type}'] = next_part_num
+    
+    print(f"[DEBUG] Part numbers assigned: {part_numbers}")
 
     # Step 3: Prepare context for rendering
     context = {
         "department": metadata.get("department", "AU"),
         **metadata,
+        **part_numbers,  # Add dynamic part numbers
+        "exam_metadata": metadata,  # Add exam_metadata for template compatibility
         "mc_no": len(mc_questions),
         "tf_no": len(tf_questions),
         "match_no": matching_items_count,  # Use the count of matching items instead of len(match_questions)
@@ -168,16 +332,58 @@ def generate_word_files(questions, metadata, session_id):
         "sqanswers": sq_answers,
         "lqanswers": lq_answers,
     }
+    
+    # Try different page break methods
+    try:
+        # Method 1: RichText with page break
+        page_break_obj = RichText()
+        page_break_obj.add('', break_=WD_BREAK.PAGE)
+        context["page_break"] = page_break_obj
+        print("[DEBUG] Using RichText page break")
+    except Exception as e:
+        print(f"[DEBUG] RichText page break failed: {e}")
+        # Method 2: Use form feed character as fallback
+        context["page_break"] = "\f"
+        print("[DEBUG] Using form feed character for page break")
+    
+    print(f"[DEBUG] Context variables: {list(context.keys())}")
 
     # Step 4: Render Word files
-    exam_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx"))
+    # Choose template based on user selection
+    if selected_template == "uploaded":
+        uploaded_template_path = os.path.join(TEMPLATE_DIR, "uploaded_template.docx")
+        if os.path.exists(uploaded_template_path):
+            exam_template_path = uploaded_template_path
+        else:
+            # Fallback to default if uploaded template doesn't exist
+            exam_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+            print("[WARNING] Uploaded template selected but not found, using default")
+    else:
+        # Use default template
+        exam_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+    
+    exam_tpl = DocxTemplate(exam_template_path)
     answer_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "exam-answerkey-tpl_clean.docx"))
 
     exam_path = os.path.join(OUTPUT_DIR, f"exam_{session_id}.docx")
     key_path = os.path.join(OUTPUT_DIR, f"answerkey_{session_id}.docx")
 
-    exam_tpl.render(context)
-    exam_tpl.save(exam_path)
+    print(f"[DEBUG] Using exam template: {exam_template_path}")
+    print(f"[DEBUG] Context keys: {list(context.keys())}")
+    
+    try:
+        exam_tpl.render(context)
+        exam_tpl.save(exam_path)
+        print(f"[DEBUG] Exam file saved successfully: {exam_path}")
+    except Exception as e:
+        print(f"[ERROR] Failed to render exam template: {e}")
+        # Try with the default template as fallback
+        print(f"[DEBUG] Falling back to default template")
+        default_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+        exam_tpl = DocxTemplate(default_template_path)
+        exam_tpl.render(context)
+        exam_tpl.save(exam_path)
+        print(f"[DEBUG] Exam file saved with default template: {exam_path}")
 
     answer_tpl.render(context)
     answer_tpl.save(key_path)

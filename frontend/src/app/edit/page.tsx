@@ -151,7 +151,11 @@ export default function EditPage() {
     });
     
     // Combine other questions with updated filtered questions
-    setQuestions([...otherQuestions, ...filteredQuestions]);
+    const newQuestions = [...otherQuestions, ...filteredQuestions];
+    setQuestions(newQuestions);
+    
+    // Save updated questions to localStorage
+    localStorage.setItem("questions", JSON.stringify(newQuestions));
   };
 
 

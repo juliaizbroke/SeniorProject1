@@ -191,6 +191,62 @@ def upload():
         print(f"Error processing upload: {str(e)}")
         return jsonify({"error": f"Failed to process file: {str(e)}"}), 500
 
+@app.route("/upload-template", methods=["POST"])
+def upload_template():
+    try:
+        if 'template' not in request.files:
+            return jsonify({"error": "No template file in the request"}), 400
+        
+        file = request.files['template']
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        if not file.filename.endswith('.docx'):
+            return jsonify({"error": "Invalid file format. Please upload a Word document (.docx)"}), 400
+        
+        # Save the uploaded template to the templates directory
+        template_path = os.path.join("processing", "templates", "uploaded_template.docx")
+        os.makedirs(os.path.dirname(template_path), exist_ok=True)
+        file.save(template_path)
+        
+        return jsonify({"success": True, "filename": file.filename})
+    except Exception as e:
+        print(f"Error processing template upload: {str(e)}")
+        return jsonify({"error": f"Failed to process template file: {str(e)}"}), 500
+
+@app.route("/check-template", methods=["GET"])
+def check_template():
+    """Check if an uploaded template exists"""
+    try:
+        template_path = os.path.join("processing", "templates", "uploaded_template.docx")
+        exists = os.path.exists(template_path)
+        
+        filename = None
+        if exists:
+            # Try to get original filename (for now, just use the static name)
+            filename = "uploaded_template.docx"
+        
+        return jsonify({"exists": exists, "filename": filename})
+    except Exception as e:
+        print(f"Error checking template: {str(e)}")
+        return jsonify({"error": f"Failed to check template: {str(e)}"}), 500
+
+@app.route("/delete-template", methods=["DELETE"])
+def delete_template():
+    """Delete the uploaded template"""
+    try:
+        template_path = os.path.join("processing", "templates", "uploaded_template.docx")
+        
+        if os.path.exists(template_path):
+            os.remove(template_path)
+            return jsonify({"success": True, "message": "Template deleted successfully"})
+        else:
+            return jsonify({"success": False, "message": "Template not found"}), 404
+    except Exception as e:
+        print(f"Error deleting template: {str(e)}")
+        return jsonify({"error": f"Failed to delete template: {str(e)}"}), 500
+
 @app.route("/analyze-duplicates", methods=["POST"])
 def analyze_duplicates():
     """Analyze questions for duplicates without removing them"""
@@ -262,37 +318,20 @@ def generate():
         questions = data['questions']
         metadata = data['metadata']
         session_id = data['session_id']
+        selected_template = data.get('selectedTemplate', 'default')  # Get template choice
+        shuffled_matching_order = data.get('shuffledMatchingOrder', None)  # Get shuffled order
 
-        exam_path, key_path = generate_word_files(questions, metadata, session_id)
-        
+        exam_path, key_path = generate_word_files(questions, metadata, session_id, selected_template, shuffled_matching_order)
         # Register Word files for automatic cleanup
         register_file_for_cleanup(exam_path)
         register_file_for_cleanup(key_path)
-        
-        # Create HTML versions for preview
-        print(f"Creating HTML previews for exam: {exam_path}, key: {key_path}")
-        exam_html_path = convert_docx_to_html(exam_path)
-        key_html_path = convert_docx_to_html(key_path)
-        
-        print(f"HTML conversion results - exam: {exam_html_path}, key: {key_html_path}")
-        
-        # Also run cleanup for any expired files
+        # Remove HTML preview generation and related fields
         cleanup_expired_files()
-
         response_data = {
             "exam_url": f"/download/{os.path.basename(exam_path)}",
             "key_url": f"/download/{os.path.basename(key_path)}",
             "expires_in_minutes": FILE_EXPIRY_MINUTES
         }
-        
-        # Add preview URLs if HTML conversion was successful
-        if exam_html_path:
-            response_data["exam_preview_url"] = f"/preview/{os.path.basename(exam_html_path)}"
-            print(f"Added exam preview URL: {response_data['exam_preview_url']}")
-        if key_html_path:
-            response_data["key_preview_url"] = f"/preview/{os.path.basename(key_html_path)}"
-            print(f"Added key preview URL: {response_data['key_preview_url']}")
-            
         print(f"Final response data: {response_data}")
         return jsonify(response_data)
     except Exception as e:
