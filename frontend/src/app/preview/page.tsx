@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Box,
@@ -22,8 +22,25 @@ import { getDownloadUrl, generateExam } from "../../utils/api";
 import { QuestionMetadata, Question, GenerateResponse } from "../../types";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 
+function PreviewPageLoading() {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '50vh',
+        gap: 2
+      }}
+    >
+      <CircularProgress />
+      <Typography variant="body1">Loading preview...</Typography>
+    </Box>
+  );
+}
 
-export default function PreviewPage() {
+function PreviewPageContent() {
   const [tabIndex, setTabIndex] = useState(0);
   const [downloadLinks, setDownloadLinks] = useState<{ 
     exam_url: string; 
@@ -686,5 +703,13 @@ export default function PreviewPage() {
         </Box>
       </Box>
     </Box>
+  );
+}
+
+export default function PreviewPage() {
+  return (
+    <Suspense fallback={<PreviewPageLoading />}>
+      <PreviewPageContent />
+    </Suspense>
   );
 }
