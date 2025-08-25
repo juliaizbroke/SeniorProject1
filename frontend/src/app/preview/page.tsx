@@ -237,11 +237,6 @@ export default function PreviewPage() {
     // Get the correct answers from matching questions
     const correctAnswers = matchingQuestions.map(q => q.answer);
     
-    // Get fake answers from fake answer questions
-    const fakeAnswers = questions.filter(q => q.type.toLowerCase() === 'fake answer')
-      .map(q => q.answer)
-      .filter(answer => answer && answer.trim()); // Filter out empty answers
-    
     // Get all fake answer questions from the main questions array
     const allFakeAnswers = questions.filter(q => q.type === 'fake answer')
       .map(q => q.answer)

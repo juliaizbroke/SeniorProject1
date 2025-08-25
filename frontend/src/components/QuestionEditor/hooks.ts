@@ -74,7 +74,7 @@ export const useQuestionEditor = (
         hashValue = hashValue & hashValue;
       }
       hash = Math.abs(hashValue).toString(36);
-    } catch (error) {
+    } catch {
       hash = Math.random().toString(36).substr(2, 9);
     }
     
@@ -95,8 +95,8 @@ export const useQuestionEditor = (
         if (Array.isArray(parsed)) {
           setLockedQuestions(new Set(parsed));
         }
-      } catch (error) {
-        console.error('Error parsing locked questions from localStorage:', error);
+      } catch (_error) {
+        console.error('Error parsing locked questions from localStorage:', _error);
       }
     }
     
@@ -106,8 +106,8 @@ export const useQuestionEditor = (
         if (Array.isArray(parsed)) {
           setLockedCategories(new Set(parsed));
         }
-      } catch (error) {
-        console.error('Error parsing locked categories from localStorage:', error);
+      } catch (_error) {
+        console.error('Error parsing locked categories from localStorage:', _error);
       }
     }
   }, []);
@@ -124,8 +124,8 @@ export const useQuestionEditor = (
           if (Array.isArray(parsed)) {
             setLockedQuestions(new Set(parsed));
           }
-        } catch (error) {
-          console.error('Error parsing locked questions from localStorage:', error);
+        } catch (_error) {
+          console.error('Error parsing locked questions from localStorage:', _error);
         }
       }
       
@@ -135,8 +135,8 @@ export const useQuestionEditor = (
           if (Array.isArray(parsed)) {
             setLockedCategories(new Set(parsed));
           }
-        } catch (error) {
-          console.error('Error parsing locked categories from localStorage:', error);
+        } catch (_error) {
+          console.error('Error parsing locked categories from localStorage:', _error);
         }
       }
     }

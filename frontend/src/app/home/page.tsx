@@ -7,8 +7,6 @@ import {
   Container,
   Typography,
   Alert,
-  Card,
-  CardContent,
   Link,
   Button,
   Grid,
@@ -148,7 +146,6 @@ export default function HomePage() {
               <Box mb={3}>
                 <FileUpload 
                   onFileSelect={setSelectedFile} 
-                  selectedFile={selectedFile}
                   onFileUpload={handleFileUpload}
                   showProgress={true}
                 />

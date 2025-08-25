@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -32,7 +32,25 @@ export default function EditPage() {
   const router = useRouter();
   const [tabIndex, setTabIndex] = useState(0);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [lockRefreshTrigger, setLockRefreshTrigger] = useState(0);useEffect(() => {
+  const [lockRefreshTrigger, setLockRefreshTrigger] = useState(0);
+
+  // Function to get available question types based on current questions
+  const getAvailableQuestionTypes = useCallback(() => {
+    const types = [] as string[];
+    const hasMultipleChoice = questions.some(q => q.type.toLowerCase() === "multiple choice");
+    const hasTrueFalse = questions.some(q => q.type.toLowerCase() === "true/false");
+    const hasMatching = questions.some(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
+    const hasWritten = questions.some(q => q.type.toLowerCase() === "written question");
+    
+    if (hasMultipleChoice) types.push("Multiple Choice");
+    if (hasTrueFalse) types.push("True/False");
+    if (hasMatching) types.push("Matching");
+    if (hasWritten) types.push("Written");
+    
+    return types;
+  }, [questions]);
+
+  useEffect(() => {
     const q = localStorage.getItem("questions");
     const allQ = localStorage.getItem("allQuestions"); // Get full pool if available
     const m = localStorage.getItem("metadata");
@@ -68,8 +86,8 @@ export default function EditPage() {
     if (tabIndex >= availableTypes.length) {
       setTabIndex(0);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questions, tabIndex]);
+
+  }, [questions, tabIndex, getAvailableQuestionTypes]);
   
   // Function to get available question types based on current questions
   const getAvailableQuestionTypes = () => {
@@ -86,6 +104,7 @@ export default function EditPage() {
     
     return types;
   };
+
   
   // Function to get tab label based on index
   const getTabLabel = (index: number) => {

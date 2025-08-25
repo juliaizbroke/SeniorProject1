@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // Await the params object in Next.js 15+
+    const { path } = await params;
+    
     // Reconstruct the full path
-    const path = params.path.join('/');
+    const fullPath = path.join('/');
     
     // Construct the backend URL
-    const backendUrl = `http://127.0.0.1:5000/preview/${path}`;
+    const backendUrl = `http://127.0.0.1:5000/preview/${fullPath}`;
     
     console.log('Proxying request to:', backendUrl);
     

@@ -55,7 +55,7 @@ export default function QuestionEditor({
     setTempQuestions(updatedQuestions);
   };
 
-  const handleEdit = (questionId: string, index: number) => {
+  const handleEdit = (questionId: string) => {
     if (lockedQuestions.has(questionId)) {
       return;
     }
@@ -64,7 +64,7 @@ export default function QuestionEditor({
     setTempQuestions(newTempQuestions);
   };
 
-  const handleSave = (questionId: string, index: number) => {
+  const handleSave = (questionId: string) => {
     onQuestionsChange(tempQuestions);
     setEditingQuestions(prev => {
       const newSet = new Set(prev);
@@ -146,6 +146,7 @@ export default function QuestionEditor({
         }, 100);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions.length, questions.map(q => q.type).join('|')]);
 
   // Reset auto-shuffle flag when questions array changes significantly
@@ -160,12 +161,14 @@ export default function QuestionEditor({
     }
     
     prevQuestionSetId.current = questionSetId;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questions]);
 
   useEffect(() => {
     return () => {
       hasAutoShuffled.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

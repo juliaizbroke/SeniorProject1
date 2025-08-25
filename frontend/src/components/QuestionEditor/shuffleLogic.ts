@@ -1,5 +1,5 @@
 import { Question } from '../../types';
-import { getContentHashForShuffling } from './shuffleUtils';
+import { getContentHashForShuffling, getShuffleInfo } from './shuffleUtils';
 
 export const createShuffleHandler = (
   questions: Question[],
@@ -11,7 +11,7 @@ export const createShuffleHandler = (
   onQuestionsChange: (questions: Question[]) => void,
   setLockedCategories: (categories: Set<string>) => void
 ) => {
-  return (shuffleInfo: any) => {
+  return (shuffleInfo: ReturnType<typeof getShuffleInfo>) => {
     const unlockedQuestionsWithIndex: { question: Question; index: number }[] = [];
     const lockedQuestionsWithIndex: { question: Question; index: number }[] = [];
     const lockedFakeAnswersWithIndex: { question: Question; index: number }[] = [];

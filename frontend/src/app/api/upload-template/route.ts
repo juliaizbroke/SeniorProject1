@@ -5,9 +5,9 @@ import path from 'path';
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
-  const file = formData.get('template');
+  const file = formData.get('template') as File | null;
 
-  if (!file || typeof file === 'string') {
+  if (!file) {
     return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
   }
 
@@ -17,14 +17,13 @@ export async function POST(req: NextRequest) {
   if (!fs.existsSync(templatesDir)) {
     fs.mkdirSync(templatesDir, { recursive: true });
   }
-  // @ts-ignore
   const filename = file.name || `template_${Date.now()}.docx`;
   const savePath = path.join(templatesDir, filename);
 
   try {
     fs.writeFileSync(savePath, buffer);
     return NextResponse.json({ success: true, filename });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Failed to save file' }, { status: 500 });
   }
 }
