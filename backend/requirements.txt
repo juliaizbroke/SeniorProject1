@@ -9,5 +9,5 @@ mammoth==1.6.0
 gunicorn
 nltk==3.8.1
 scikit-learn==1.4.0
-sentence-transformers==2.2.2
+sentence-transformers==2.6.1
 Pillow==10.2.0

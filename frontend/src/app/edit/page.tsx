@@ -89,23 +89,6 @@ export default function EditPage() {
 
   }, [questions, tabIndex, getAvailableQuestionTypes]);
   
-  // Function to get available question types based on current questions
-  const getAvailableQuestionTypes = () => {
-    const types = [];
-    const hasMultipleChoice = questions.some(q => q.type.toLowerCase() === "multiple choice");
-    const hasTrueFalse = questions.some(q => q.type.toLowerCase() === "true/false");
-    const hasMatching = questions.some(q => q.type.toLowerCase() === "matching" || q.type.toLowerCase() === "fake answer");
-    const hasWritten = questions.some(q => q.type.toLowerCase() === "written question");
-    
-    if (hasMultipleChoice) types.push("Multiple Choice");
-    if (hasTrueFalse) types.push("True/False");
-    if (hasMatching) types.push("Matching");
-    if (hasWritten) types.push("Written");
-    
-    return types;
-  };
-
-  
   // Function to get tab label based on index
   const getTabLabel = (index: number) => {
     const availableTypes = getAvailableQuestionTypes();
