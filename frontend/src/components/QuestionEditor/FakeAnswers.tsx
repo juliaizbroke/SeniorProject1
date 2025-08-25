@@ -159,6 +159,7 @@ export default function FakeAnswers({
                     variant="outlined"
                     placeholder="Enter category (e.g., Math, Science)"
                     size="small"
+                    spellCheck={true}
                     sx={{ 
                       flex: 1,
                       '& .MuiOutlinedInput-root': {
@@ -219,6 +220,7 @@ export default function FakeAnswers({
                     variant="outlined"
                     placeholder="Enter the fake answer/distractor"
                     size="small"
+                    spellCheck={true}
                     sx={{ 
                       '& .MuiOutlinedInput-root': {
                         height: '36px',

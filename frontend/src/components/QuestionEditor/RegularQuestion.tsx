@@ -181,6 +181,7 @@ export default function RegularQuestion({
             fullWidth
             variant="outlined"
             size="small"
+            spellCheck={true}
           />
         )}
 
@@ -201,6 +202,7 @@ export default function RegularQuestion({
                     fullWidth
                     variant="outlined"
                     size="small"
+                    spellCheck={true}
                   />
                 ))}
               </Stack>
@@ -270,6 +272,7 @@ export default function RegularQuestion({
                       multiline
                       rows={currentQuestion.q_type?.toLowerCase() === 'long' ? 3 : 2}
                       size="small"
+                      spellCheck={true}
                     />
                   ) : (
                     <TextField
@@ -279,6 +282,7 @@ export default function RegularQuestion({
                       variant="outlined"
                       label="Answer"
                       size="small"
+                      spellCheck={true}
                     />
                   )}
                 </FormControl>
@@ -317,6 +321,7 @@ export default function RegularQuestion({
               fullWidth
               variant="outlined"
               size="small"
+              spellCheck={true}
             />
           </Box>
         )}
