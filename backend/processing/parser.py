@@ -3,6 +3,8 @@
 import pandas as pd
 from io import BytesIO
 import datetime
+from .duplicate_detector import QuestionDuplicateDetector
+import logging
 
 def format_date(date_str):
     try:
@@ -24,7 +26,15 @@ def format_time(time_str):
     except:
         return time_str
 
-def parse_excel(file):
+def parse_excel(file, remove_duplicates=True, similarity_threshold=0.8):
+    """
+    Parse Excel file and extract questions with optional duplicate detection.
+    
+    Args:
+        file: Excel file object
+        remove_duplicates: Whether to remove duplicate questions
+        similarity_threshold: Threshold for similarity detection (0.0-1.0)
+    """
     xls = pd.ExcelFile(file)
 
     # ---- Extract Metadata from 'Info' ----
@@ -77,13 +87,15 @@ def parse_excel(file):
     # ---- Extract Questions ----
     all_questions = []
 
+
     # Multiple Choice
     df_mc = xls.parse("MultipleChoice")
-    for _, row in df_mc.iterrows():
+    for idx, row in df_mc.iterrows():
         # Check if any option has length >= 20
         options = [str(row.get(opt, "")) for opt in ['a', 'b', 'c', 'd', 'e']]
         is_long = any(len(opt) >= 20 for opt in options)
         
+       
         all_questions.append({
             "type": "multiple choice",
             "question": row.get("question", ""),
@@ -94,7 +106,6 @@ def parse_excel(file):
             "e": row.get("e", ""),
             "answer": row.get("ans", ""),
             "category": row.get("category", ""),
-            "image": row.get("image", ""),
             "is_long": is_long
         })
 
@@ -142,6 +153,33 @@ def parse_excel(file):
             "q_type": row.get("q_type", ""),
             "category": row.get("category", "")
         })
+
+    # ---- Apply Duplicate Detection ----
+    if remove_duplicates and all_questions:
+        try:
+            detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
+            original_count = len(all_questions)
+            all_questions, removed_duplicates = detector.remove_duplicates(all_questions)
+            
+            # Log the duplicate detection results
+            logging.info(f"Duplicate detection: {original_count} -> {len(all_questions)} questions "
+                        f"({len(removed_duplicates)} duplicates removed)")
+            
+            # Add duplicate detection info to metadata
+            metadata["duplicate_detection"] = {
+                "enabled": True,
+                "original_count": original_count,
+                "final_count": len(all_questions),
+                "removed_count": len(removed_duplicates),
+                "similarity_threshold": similarity_threshold,
+                "removed_duplicates": removed_duplicates
+            }
+        except Exception as e:
+            logging.error(f"Duplicate detection failed: {str(e)}")
+            metadata["duplicate_detection"] = {
+                "enabled": False,
+                "error": str(e)
+            }
 
     metadata["selection_settings"] = {}  # Optional: add default/random if needed
     return all_questions, metadata

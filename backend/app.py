@@ -172,7 +172,15 @@ def upload():
         if not file.filename.endswith(('.xlsx', '.xls')):
             return jsonify({"error": "Invalid file format. Please upload an Excel file (.xlsx or .xls)"}), 400
         
-        questions, metadata = parse_excel(file)
+        # Get duplicate detection settings from form data or use defaults
+        remove_duplicates = request.form.get('removeDuplicates', 'true').lower() == 'true'
+        similarity_threshold = float(request.form.get('similarityThreshold', '0.8'))
+        
+        # Validate threshold
+        if not 0.0 <= similarity_threshold <= 1.0:
+            return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
+        
+        questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold)
         session_id = str(uuid.uuid4())
         return jsonify({
             "session_id": session_id,
@@ -182,6 +190,70 @@ def upload():
     except Exception as e:
         print(f"Error processing upload: {str(e)}")
         return jsonify({"error": f"Failed to process file: {str(e)}"}), 500
+
+@app.route("/analyze-duplicates", methods=["POST"])
+def analyze_duplicates():
+    """Analyze questions for duplicates without removing them"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file part in the request"}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        if not file.filename.endswith(('.xlsx', '.xls')):
+            return jsonify({"error": "Invalid file format. Please upload an Excel file (.xlsx or .xls)"}), 400
+        
+        # Parse without removing duplicates first to get all questions
+        questions, metadata = parse_excel(file, remove_duplicates=False)
+        
+        # Get threshold from form data
+        similarity_threshold = float(request.form.get('similarityThreshold', '0.8'))
+        
+        if not 0.0 <= similarity_threshold <= 1.0:
+            return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
+        
+        # Analyze duplicates
+        from processing.duplicate_detector import QuestionDuplicateDetector
+        detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
+        
+        duplicate_groups = detector.find_duplicate_groups(questions)
+        
+        # Format results for frontend
+        duplicate_analysis = []
+        for group in duplicate_groups:
+            if len(group) > 1:  # Only groups with actual duplicates
+                group_data = {
+                    "questions": group,
+                    "count": len(group),
+                    "similarity_scores": []
+                }
+                
+                # Calculate pairwise similarity scores within the group
+                for i in range(len(group)):
+                    for j in range(i + 1, len(group)):
+                        similarity = detector.calculate_similarity(group[i], group[j])
+                        group_data["similarity_scores"].append({
+                            "question1_index": i,
+                            "question2_index": j,
+                            "similarity": similarity
+                        })
+                
+                duplicate_analysis.append(group_data)
+        
+        return jsonify({
+            "total_questions": len(questions),
+            "duplicate_groups": len(duplicate_analysis),
+            "total_duplicates": sum(len(group["questions"]) for group in duplicate_analysis),
+            "similarity_threshold": similarity_threshold,
+            "duplicate_analysis": duplicate_analysis
+        })
+        
+    except Exception as e:
+        print(f"Error analyzing duplicates: {str(e)}")
+        return jsonify({"error": f"Failed to analyze duplicates: {str(e)}"}), 500
 
 @app.route("/generate", methods=["POST"])
 def generate():
