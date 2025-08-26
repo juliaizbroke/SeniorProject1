@@ -107,7 +107,7 @@ export default function CategoryPage() {
                 { label: "Exam Type", value: metadata.exam_type, key: "exam_type" },
                 {
                   label: "Exam Type Code",
-                  value: `${metadata.exam_type}_${metadata.semester}/${metadata.year}`,
+                  value: metadata.exam_type_code,
                   key: "exam_type_code",
                   editable: false
                 },
@@ -142,6 +142,12 @@ export default function CategoryPage() {
                       value={item.value}
                       onChange={(e) => {
                         const updatedMetadata = { ...metadata, [item.key]: e.target.value };
+                        
+                        // Update exam_type_code if year, semester, or exam_type is changed
+                        if (item.key === 'year' || item.key === 'semester' || item.key === 'exam_type') {
+                          updatedMetadata.exam_type_code = `${updatedMetadata.exam_type}_${updatedMetadata.semester}/${updatedMetadata.year}`;
+                        }
+                        
                         setMetadata(updatedMetadata);
                         localStorage.setItem("metadata", JSON.stringify(updatedMetadata));
                       }}

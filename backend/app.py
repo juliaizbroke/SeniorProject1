@@ -2,6 +2,7 @@
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 import os
 import uuid
 import threading
@@ -24,7 +25,9 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)
 UPLOAD_FOLDER = "output"
+WORD_TEMPLATES_FOLDER = "processing/templates/paper"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(WORD_TEMPLATES_FOLDER, exist_ok=True)
 
 # File cleanup configuration
 FILE_EXPIRY_MINUTES = int(os.environ.get('FILE_EXPIRY_MINUTES', 30))  # Default 30 minutes
@@ -251,7 +254,7 @@ def delete_template():
 def download_template():
     """Download the default question bank template"""
     try:
-        template_path = os.path.join("processing", "templates", "question-bank-tpl-clean.xlsx")
+        template_path = os.path.join("processing", "templates", "download", "question-bank-tpl-clean.xlsx")
         if os.path.exists(template_path):
             return send_file(template_path, as_attachment=True, download_name='question-bank-template.xlsx')
         else:
@@ -331,10 +334,13 @@ def generate():
         questions = data['questions']
         metadata = data['metadata']
         session_id = data['session_id']
-        selected_template = data.get('selectedTemplate', 'default')  # Get template choice
+        selected_template = data.get('selectedTemplate', 'default')  # Get Excel template choice
+        selected_word_template = data.get('selectedWordTemplate', 'default')  # Get Word template choice
         shuffled_matching_order = data.get('shuffledMatchingOrder', None)  # Get shuffled order
+        
+        print(f"[DEBUG] Generate endpoint - selectedWordTemplate: {selected_word_template}")
 
-        exam_path, key_path = generate_word_files(questions, metadata, session_id, selected_template, shuffled_matching_order)
+        exam_path, key_path = generate_word_files(questions, metadata, session_id, selected_template, shuffled_matching_order, selected_word_template)
         # Register Word files for automatic cleanup
         register_file_for_cleanup(exam_path)
         register_file_for_cleanup(key_path)
@@ -442,6 +448,136 @@ def debug_files():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# Word Template Management Endpoints
+@app.route("/upload-word-template", methods=["POST"])
+def upload_word_template():
+    """Upload a Word template file"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Check if file is a Word document
+        if not file.filename.lower().endswith(('.docx', '.doc')):
+            return jsonify({"error": "Only Word documents (.docx, .doc) are allowed"}), 400
+        
+        # Save the file to the templates directory
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(WORD_TEMPLATES_FOLDER, filename)
+        file.save(file_path)
+        
+        return jsonify({
+            "message": "Word template uploaded successfully",
+            "filename": filename
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+
+@app.route("/word-templates", methods=["GET"])
+def get_word_templates():
+    """Get list of uploaded Word templates"""
+    try:
+        templates = []
+        default_template = None
+        
+        # Check if there's a default.txt file that specifies the default template
+        default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
+        if os.path.exists(default_file_path):
+            with open(default_file_path, 'r') as f:
+                default_template = f.read().strip()
+        
+        # If no default.txt or file doesn't exist, use exam-paper-tpl_clean.docx as default
+        if not default_template or not os.path.exists(os.path.join(WORD_TEMPLATES_FOLDER, default_template)):
+            default_template = "exam-paper-tpl_clean.docx"
+        
+        for filename in os.listdir(WORD_TEMPLATES_FOLDER):
+            if filename.lower().endswith(('.docx', '.doc')):
+                file_path = os.path.join(WORD_TEMPLATES_FOLDER, filename)
+                is_default = filename == default_template
+                templates.append({
+                    "id": filename,  # Use filename as ID
+                    "filename": filename,
+                    "name": filename,  # Use filename as display name
+                    "size": os.path.getsize(file_path),
+                    "isDefault": is_default
+                })
+        
+        # Sort templates so default comes first
+        templates.sort(key=lambda x: not x["isDefault"])
+        
+        return jsonify({"templates": templates}), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to get templates: {str(e)}"}), 500
+
+@app.route("/word-templates/<template_id>/make-default", methods=["POST"])
+def make_word_template_default(template_id):
+    """Make a Word template the default one"""
+    try:
+        template_path = os.path.join(WORD_TEMPLATES_FOLDER, template_id)
+        if not os.path.exists(template_path):
+            return jsonify({"error": "Template not found"}), 404
+        
+        # Write the template_id to default.txt
+        default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
+        with open(default_file_path, 'w') as f:
+            f.write(template_id)
+        
+        return jsonify({"message": f"Template {template_id} set as default"}), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to set default template: {str(e)}"}), 500
+
+@app.route("/word-templates/<template_id>", methods=["DELETE"])
+def delete_word_template(template_id):
+    """Delete a Word template"""
+    try:
+        # Prevent deletion of the original template only
+        if template_id == "exam-paper-tpl_clean.docx":
+            return jsonify({"error": "Cannot delete the original template"}), 400
+        
+        template_path = os.path.join(WORD_TEMPLATES_FOLDER, template_id)
+        if not os.path.exists(template_path):
+            return jsonify({"error": "Template not found"}), 404
+        
+        # Check if this is the current default template
+        default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
+        current_default = None
+        if os.path.exists(default_file_path):
+            with open(default_file_path, 'r') as f:
+                current_default = f.read().strip()
+        
+        # If we're deleting the current default, reset default to origin
+        if current_default == template_id:
+            with open(default_file_path, 'w') as f:
+                f.write("exam-paper-tpl_clean.docx")
+        
+        # Delete the template file
+        os.remove(template_path)
+        
+        return jsonify({"message": f"Template {template_id} deleted successfully"}), 200
+        
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete template: {str(e)}"}), 500
+
+@app.route("/download-word-template", methods=["GET"])
+def download_default_word_template():
+    """Download the default Word template"""
+    try:
+        # Download the default exam paper template from the download folder
+        template_path = os.path.join("processing", "templates", "download", "exam-paper-tpl_clean.docx")
+        if os.path.exists(template_path):
+            return send_file(template_path, as_attachment=True, download_name='exam-paper-template.docx')
+        else:
+            return jsonify({"error": "Default Word template not found"}), 404
+    except Exception as e:
+        print(f"Error downloading default word template: {str(e)}")
+        return jsonify({"error": f"Failed to download template: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
