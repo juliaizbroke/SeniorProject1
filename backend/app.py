@@ -247,6 +247,19 @@ def delete_template():
         print(f"Error deleting template: {str(e)}")
         return jsonify({"error": f"Failed to delete template: {str(e)}"}), 500
 
+@app.route("/download-template", methods=["GET"])
+def download_template():
+    """Download the default question bank template"""
+    try:
+        template_path = os.path.join("processing", "templates", "question-bank-tpl-clean.xlsx")
+        if os.path.exists(template_path):
+            return send_file(template_path, as_attachment=True, download_name='question-bank-template.xlsx')
+        else:
+            return jsonify({"error": "Template file not found"}), 404
+    except Exception as e:
+        print(f"Error downloading template: {str(e)}")
+        return jsonify({"error": f"Failed to download template: {str(e)}"}), 500
+
 @app.route("/analyze-duplicates", methods=["POST"])
 def analyze_duplicates():
     """Analyze questions for duplicates without removing them"""
