@@ -16,6 +16,7 @@ import {
   FormControlLabel,
   Radio,
 } from "@mui/material";
+import DownloadIcon from '@mui/icons-material/Download';
 import FileUpload from "../../components/FileUpload";
 import Navbar from "../../components/Navbar";
 import { uploadExcel } from "../../utils/api";
@@ -104,6 +105,28 @@ export default function HomePage() {
     }
   };
 
+  const downloadTemplate = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/download-template');
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'question-bank-template.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        alert('Failed to download template');
+      }
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      alert('Failed to download template');
+    }
+  };
+
   return (
     <Box minHeight="100vh" sx={{ bgcolor: "#e3e9f7", color: "#222", position: "relative", overflow: "hidden" }}>
       <Navbar />
@@ -124,9 +147,29 @@ export default function HomePage() {
                 Upload your Excel file containing exam data
               </Typography>
               
-              <Link href="/template.xlsx" underline="hover" fontWeight="bold" sx={{ color: "#1a1a1a", fontWeight: 700, lineHeight: 1.5, letterSpacing: 0.5, mb: 3, display: 'block' }}>
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={downloadTemplate}
+                sx={{ 
+                  color: "#1e40af", 
+                  borderColor: "#1e40af",
+                  fontWeight: 600, 
+                  fontSize: "14px",
+                  textTransform: 'none',
+                  mb: 3,
+                  px: 3,
+                  py: 1,
+                  borderRadius: 2,
+                  '&:hover': {
+                    backgroundColor: "#1e40af",
+                    color: "white",
+                    borderColor: "#1e40af",
+                  }
+                }}
+              >
                 Download Excel Template
-              </Link>
+              </Button>
 
               {/* Requirements Section */}
               <Box mb={3}>
