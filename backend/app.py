@@ -174,16 +174,27 @@ def upload():
         
         if not file.filename.endswith(('.xlsx', '.xls')):
             return jsonify({"error": "Invalid file format. Please upload an Excel file (.xlsx or .xls)"}), 400
-        
-        # Get duplicate detection settings from form data or use defaults
-        remove_duplicates = request.form.get('removeDuplicates', 'true').lower() == 'true'
+
+        # Get duplicate detection settings from form data or use defaults.
+        # Default now is to NOT remove duplicates; we only annotate unless explicitly requested.
+        remove_duplicates = request.form.get('removeDuplicates', 'false').lower() == 'true'
         similarity_threshold = float(request.form.get('similarityThreshold', '0.8'))
-        
+
         # Validate threshold
         if not 0.0 <= similarity_threshold <= 1.0:
             return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
         
         questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold)
+        # If we removed duplicates, we still want annotation info on returned list for UI clarity.
+        if remove_duplicates:
+            try:
+                from processing.duplicate_detector import QuestionDuplicateDetector
+                detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
+                questions, duplicate_info = detector.annotate_duplicates(questions)
+                metadata.setdefault("duplicate_detection", {})
+                metadata["duplicate_detection"]["post_removal_annotation"] = duplicate_info
+            except Exception as e:
+                print(f"Warning: could not annotate duplicates after removal: {e}")
         session_id = str(uuid.uuid4())
         return jsonify({
             "session_id": session_id,

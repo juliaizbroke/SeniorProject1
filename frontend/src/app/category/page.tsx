@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -55,6 +55,13 @@ export default function CategoryPage() {
     router.push("/edit");
   };
 
+  const hasDuplicates = useMemo(() => questions.some(q => q.is_duplicate), [questions]);
+  const duplicateGroupCount = useMemo(() => {
+    const groups = new Set<number>();
+    questions.forEach(q => { if (q.is_duplicate && q.duplicate_group_id) groups.add(q.duplicate_group_id); });
+    return groups.size;
+  }, [questions]);
+
   return (
     <Box sx={{ bgcolor: '#e3e9f7', minHeight: '100vh', color: '#222', position: 'relative', overflow: 'hidden' }}>
       <Navbar />
@@ -72,6 +79,23 @@ export default function CategoryPage() {
           >
             Choose the number of questions from each category to include in your exam.
           </Typography>
+          {hasDuplicates && (
+            <Box sx={{
+              mb: 4,
+              p: 2.5,
+              background: '#fffbe6',
+              border: '1px solid #f5d36b',
+              borderRadius: 2,
+              color: '#795500'
+            }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Possible Duplicate Questions Detected
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', mt: .5 }}>
+                {duplicateGroupCount} duplicate group{duplicateGroupCount!==1?'s':''} identified. They will be highlighted during editing so you can decide which to keep or modify.
+              </Typography>
+            </Box>
+          )}
           {metadata && (
           <Box
             sx={{
