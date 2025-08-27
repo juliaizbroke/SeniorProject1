@@ -129,18 +129,18 @@ export default function FileUpload({
       {...getRootProps()}
       sx={{
         bgcolor: uploadItems.length > 0 ? '#f8fafc' : 
-                 isDragActive ? '#d2ddfa' : '#e3e9f7',
+                 isDragActive ? '#dcfce7' : '#eff6ff',
         border: uploadItems.length > 0 ? '2px solid #e2e8f0' :
-                '2px dashed #b0b8c9',
+                '2px dashed #86efac',
         color: '#1a1a1a',
-        boxShadow: '0 2px 8px rgba(30,58,138,0.04)',
+        boxShadow: '0 2px 8px rgba(30,64,175,0.04)',
         borderRadius: 2,
         p: 3,
         cursor: uploadItems.length > 0 ? 'default' : 'pointer',
         transition: 'all 0.2s ease',
         '&:hover': uploadItems.length === 0 ? {
-          borderColor: '#1e3a8a',
-          backgroundColor: '#d2ddfa',
+          borderColor: '#059669',
+          backgroundColor: '#dcfce7',
         } : {},
         minHeight: uploadItems.length > 0 ? 'auto' : '200px',
         display: 'flex',
@@ -163,9 +163,9 @@ export default function FileUpload({
           justifyContent: 'center',
           alignItems: 'center'
         }}>
-          <CloudUploadIcon sx={{ fontSize: 48, mb: 2, color: '#1e3a8a' }} />
+          <CloudUploadIcon sx={{ fontSize: 48, mb: 2, color: '#059669' }} />
           {isDragActive ? (
-            <Typography variant="body1" sx={{ color: '#1e3a8a', fontWeight: 500 }}>
+            <Typography variant="body1" sx={{ color: '#059669', fontWeight: 500 }}>
               Drop the Excel file here...
             </Typography>
           ) : (
