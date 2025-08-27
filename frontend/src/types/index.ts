@@ -15,6 +15,11 @@ export interface Question {
   // Matching specific fields
   // Written answer specific fields
   q_type?: string;
+  // Duplicate metadata (annotated by backend)
+  is_duplicate?: boolean;
+  duplicate_group_id?: number;
+  duplicate_representative?: boolean;
+  duplicate_similarity?: number;
 }
 
 export interface QuestionMetadata {

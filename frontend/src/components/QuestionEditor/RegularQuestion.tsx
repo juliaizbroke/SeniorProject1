@@ -73,8 +73,8 @@ export default function RegularQuestion({
       elevation={0}
       sx={{
         opacity: isLocked ? 0.8 : 1,
-        borderColor: isLocked ? '#4682b4' : '#e0e0e0',
-        borderWidth: isLocked ? '2px' : '1px',
+  borderColor: question.is_duplicate ? (question.duplicate_representative ? '#1d8348' : '#c0392b') : (isLocked ? '#4682b4' : '#e0e0e0'),
+  borderWidth: question.is_duplicate ? '2px' : (isLocked ? '2px' : '1px'),
         background: 'rgba(255,255,255,0.12)',
         boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
         backdropFilter: 'blur(8px)',
@@ -96,6 +96,32 @@ export default function RegularQuestion({
               size="small"
               sx={{ fontSize: '0.7rem', height: '20px' }}
             />
+            {question.is_duplicate && (
+              <Chip
+                label={question.duplicate_representative ? 'Duplicate Group Rep' : `Duplicate G${question.duplicate_group_id}`}
+                size="small"
+                sx={{
+                  fontSize: '0.65rem',
+                  height: '20px',
+                  backgroundColor: question.duplicate_representative ? '#1d8348' : '#c0392b',
+                  color: 'white',
+                  fontWeight: 600
+                }}
+              />
+            )}
+            {question.is_duplicate && typeof question.duplicate_similarity === 'number' && !question.duplicate_representative && (
+              <Chip
+                label={`Sim: ${(question.duplicate_similarity*100).toFixed(0)}%`}
+                size="small"
+                sx={{
+                  fontSize: '0.65rem',
+                  height: '20px',
+                  backgroundColor: '#f39c12',
+                  color: '#222',
+                  fontWeight: 600
+                }}
+              />
+            )}
             {isLocked && (
               <Chip
                 label="Locked"

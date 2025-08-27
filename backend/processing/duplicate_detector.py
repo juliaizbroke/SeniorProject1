@@ -17,7 +17,7 @@ from typing import List, Dict, Tuple, Set
 import logging
 
 class QuestionDuplicateDetector:
-    def __init__(self, similarity_threshold: float = 0.8):
+    def __init__(self, similarity_threshold: float = 0.6):
         """
         Initialize the duplicate detector
         
@@ -151,6 +151,61 @@ class QuestionDuplicateDetector:
                         })
         
         return unique_questions, removed_duplicates
+
+    # --- New functionality: annotate duplicates instead of removing them ---
+    def annotate_duplicates(self, questions: List[Dict]) -> Tuple[List[Dict], Dict]:
+        """Annotate questions with duplicate grouping metadata instead of removing them.
+
+        Returns:
+            (questions_with_annotations, info_dict)
+            Each question in a duplicate group (size > 1) gains:
+                is_duplicate: bool
+                duplicate_group_id: int (1-based)
+                duplicate_representative: bool (True if chosen representative)
+                duplicate_similarity: float (similarity to representative, representative = 1.0)
+        """
+        if not questions:
+            return [], {"groups": [], "group_count": 0, "duplicate_question_count": 0}
+
+        groups = self.find_duplicate_groups(questions)
+        annotated = list(questions)  # shallow copy
+        duplicate_groups_info = []
+        group_id_counter = 1
+        duplicate_question_total = 0
+
+        for group in groups:
+            if len(group) <= 1:
+                continue
+            # Determine representative (reuse completeness scoring)
+            representative = max(group, key=self._score_question_completeness)
+            group_member_infos = []
+            for q in group:
+                similarity = 1.0 if q is representative else self.calculate_similarity(q, representative)
+                q["is_duplicate"] = True
+                q["duplicate_group_id"] = group_id_counter
+                q["duplicate_representative"] = (q is representative)
+                q["duplicate_similarity"] = round(float(similarity), 4)
+                group_member_infos.append({
+                    "question_text": q.get("question", "")[:120],
+                    "is_representative": q is representative,
+                    "similarity": round(float(similarity), 4)
+                })
+            duplicate_groups_info.append({
+                "group_id": group_id_counter,
+                "size": len(group),
+                "representative_text": representative.get("question", "")[:120],
+                "members": group_member_infos
+            })
+            duplicate_question_total += len(group)
+            group_id_counter += 1
+
+        info = {
+            "groups": duplicate_groups_info,
+            "group_count": len(duplicate_groups_info),
+            "duplicate_question_count": duplicate_question_total,
+            "similarity_threshold": self.similarity_threshold
+        }
+        return annotated, info
     
     def _extract_question_text(self, question: Dict) -> str:
         """
@@ -344,17 +399,10 @@ class QuestionDuplicateDetector:
         
         return score
     
-def remove_duplicates_from_questions(questions: List[Dict], 
-                                   similarity_threshold: float = 0.8) -> Tuple[List[Dict], List[Dict]]:
-    """
-    Convenience function to remove duplicates from questions
-    
-    Args:
-        questions: List of question dictionaries
-        similarity_threshold: Combined similarity threshold
-    
-    Returns:
-        Tuple of (unique_questions, removed_duplicates)
-    """
+
+
+def annotate_duplicates_in_questions(questions: List[Dict],
+                                     similarity_threshold: float = 0.8) -> Tuple[List[Dict], Dict]:
+    """Convenience wrapper to annotate duplicate questions without removing them."""
     detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
-    return detector.remove_duplicates(questions)
+    return detector.annotate_duplicates(questions)

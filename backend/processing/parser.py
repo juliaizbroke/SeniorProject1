@@ -6,7 +6,7 @@ import datetime
 import openpyxl
 from openpyxl_image_loader import SheetImageLoader
 import os
-from .duplicate_detector import QuestionDuplicateDetector
+from .duplicate_detector import QuestionDuplicateDetector, annotate_duplicates_in_questions
 import logging
 
 def format_date(date_str):
@@ -29,7 +29,7 @@ def format_time(time_str):
     except:
         return time_str
 
-def parse_excel(file, remove_duplicates=True, similarity_threshold=0.8):
+def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
     """
     Parse Excel file and extract questions with optional duplicate detection.
     
@@ -184,25 +184,36 @@ def parse_excel(file, remove_duplicates=True, similarity_threshold=0.8):
         })
 
     # ---- Apply Duplicate Detection ----
-    if remove_duplicates and all_questions:
+    if all_questions:
         try:
             detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
             original_count = len(all_questions)
-            all_questions, removed_duplicates = detector.remove_duplicates(all_questions)
-            
-            # Log the duplicate detection results
-            logging.info(f"Duplicate detection: {original_count} -> {len(all_questions)} questions "
-                        f"({len(removed_duplicates)} duplicates removed)")
-            
-            # Add duplicate detection info to metadata
-            metadata["duplicate_detection"] = {
-                "enabled": True,
-                "original_count": original_count,
-                "final_count": len(all_questions),
-                "removed_count": len(removed_duplicates),
-                "similarity_threshold": similarity_threshold,
-                "removed_duplicates": removed_duplicates
-            }
+            if remove_duplicates:
+                all_questions, removed_duplicates = detector.remove_duplicates(all_questions)
+                logging.info(f"Duplicate detection (removal): {original_count} -> {len(all_questions)} questions "
+                             f"({len(removed_duplicates)} duplicates removed)")
+                metadata["duplicate_detection"] = {
+                    "enabled": True,
+                    "mode": "remove",
+                    "original_count": original_count,
+                    "final_count": len(all_questions),
+                    "removed_count": len(removed_duplicates),
+                    "similarity_threshold": similarity_threshold,
+                    "removed_duplicates": removed_duplicates
+                }
+            else:
+                all_questions, duplicate_info = detector.annotate_duplicates(all_questions)
+                logging.info(f"Duplicate detection (annotate): {duplicate_info['group_count']} duplicate groups; "
+                             f"{duplicate_info['duplicate_question_count']} questions involved")
+                metadata["duplicate_detection"] = {
+                    "enabled": True,
+                    "mode": "annotate",
+                    "original_count": original_count,
+                    "final_count": len(all_questions),
+                    "removed_count": 0,
+                    "similarity_threshold": similarity_threshold,
+                    "duplicate_groups": duplicate_info
+                }
         except Exception as e:
             logging.error(f"Duplicate detection failed: {str(e)}")
             metadata["duplicate_detection"] = {

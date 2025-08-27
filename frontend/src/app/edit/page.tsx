@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -88,6 +88,19 @@ export default function EditPage() {
     }
 
   }, [questions, tabIndex, getAvailableQuestionTypes]);
+
+  const duplicateSummary = useMemo(() => {
+    const groups = new Map<number, { rep?: string; count: number }>();
+    questions.forEach(q => {
+      if (q.is_duplicate && q.duplicate_group_id) {
+        const g = groups.get(q.duplicate_group_id) || { count: 0 };
+        g.count += 1;
+        if (q.duplicate_representative) g.rep = q.question?.slice(0,80);
+        groups.set(q.duplicate_group_id, g);
+      }
+    });
+    return { count: groups.size, groups };
+  }, [questions]);
   
   // Function to get tab label based on index
   const getTabLabel = (index: number) => {
@@ -181,6 +194,23 @@ export default function EditPage() {
           <Box sx={{ mb: 4 }}>
             <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.18)' }} />
           </Box>
+          {duplicateSummary.count > 0 && (
+            <Box sx={{
+              mb: 3,
+              p: 2.5,
+              background: '#fffbe6',
+              border: '1px solid #f5d36b',
+              borderRadius: 2,
+              color: '#795500'
+            }}>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {duplicateSummary.count} duplicate group{duplicateSummary.count!==1?'s':''} detected.
+              </Typography>
+              <Typography variant="caption" sx={{ display: 'block', mt: .5 }}>
+                Green border = representative question kept by system. Red border = similar question you may revise or remove manually.
+              </Typography>
+            </Box>
+          )}
           <Tabs
             value={tabIndex}
             onChange={(_, newValue) => setTabIndex(newValue)}
