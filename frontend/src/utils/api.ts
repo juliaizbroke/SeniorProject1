@@ -40,9 +40,11 @@ export async function uploadExcel(file: File): Promise<UploadResponse> {
 export async function generateExam(data: GenerateRequest): Promise<GenerateResponse> {
   // Include template choice from localStorage
   const selectedTemplate = localStorage.getItem("selectedTemplate") || "default";
+  const selectedWordTemplate = localStorage.getItem("selectedWordTemplate") || "default";
   const requestData = {
     ...data,
-    selectedTemplate
+    selectedTemplate,
+    selectedWordTemplate
   };
 
   const response = await fetch(`${API_BASE_URL}/generate`, {

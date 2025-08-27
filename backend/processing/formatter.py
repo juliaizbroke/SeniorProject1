@@ -65,9 +65,10 @@ def filter_and_randomize(questions, settings):
     
     return selected
 
-def generate_word_files(questions, metadata, session_id, selected_template="default", shuffled_matching_order=None):
+def generate_word_files(questions, metadata, session_id, selected_template="default", shuffled_matching_order=None, selected_word_template="default"):
     print(f"[DEBUG] generate_word_files called with {len(questions)} questions")
     print(f"[DEBUG] Question types: {[q.get('type', 'unknown') for q in questions]}")
+    print(f"[DEBUG] Selected Word template: {selected_word_template}")
     
     # Step 1: Filter & randomize if needed
     filtered = filter_and_randomize(questions, metadata.get("selection_settings", {}))
@@ -92,15 +93,30 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     # Set random seed based on current time to ensure different randomization each time
     random.seed()
     
-    # Determine which template to use for images based on selection
-    if selected_template == "uploaded":
-        uploaded_template_path = os.path.join(TEMPLATE_DIR, "uploaded_template.docx")
-        if os.path.exists(uploaded_template_path):
-            template_for_images = uploaded_template_path
+    # Determine which template to use for images - use the same logic as for main template
+    WORD_TEMPLATES_FOLDER = os.path.join(TEMPLATE_DIR, "paper")
+    
+    if selected_word_template == "default" or not selected_word_template:
+        # Check if there's a default.txt file that specifies the default template
+        default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
+        if os.path.exists(default_file_path):
+            with open(default_file_path, 'r') as f:
+                default_template_name = f.read().strip()
+            template_for_images = os.path.join(WORD_TEMPLATES_FOLDER, default_template_name)
+            
+            # If the default template file doesn't exist, fall back to original
+            if not os.path.exists(template_for_images):
+                template_for_images = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
         else:
-            template_for_images = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+            # No default.txt file, use original template
+            template_for_images = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
     else:
-        template_for_images = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+        # Use the specifically selected template
+        template_for_images = os.path.join(WORD_TEMPLATES_FOLDER, selected_word_template)
+        
+        # If the selected template doesn't exist, fall back to default
+        if not os.path.exists(template_for_images):
+            template_for_images = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
     
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
         image_obj = None
@@ -349,21 +365,49 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     print(f"[DEBUG] Context variables: {list(context.keys())}")
 
     # Step 4: Render Word files
-    # Choose template based on user selection
-    if selected_template == "uploaded":
-        uploaded_template_path = os.path.join(TEMPLATE_DIR, "uploaded_template.docx")
-        if os.path.exists(uploaded_template_path):
-            exam_template_path = uploaded_template_path
+    # Determine which Word template to use
+    WORD_TEMPLATES_FOLDER = os.path.join(TEMPLATE_DIR, "paper")
+    
+    if selected_word_template == "default" or not selected_word_template:
+        # Check if there's a default.txt file that specifies the default template
+        default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
+        if os.path.exists(default_file_path):
+            with open(default_file_path, 'r') as f:
+                default_template_name = f.read().strip()
+            exam_template_path = os.path.join(WORD_TEMPLATES_FOLDER, default_template_name)
+            
+            # If the default template file doesn't exist, fall back to original
+            if not os.path.exists(exam_template_path):
+                exam_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
+                print(f"[WARNING] Default template {default_template_name} not found, using original")
         else:
-            # Fallback to default if uploaded template doesn't exist
-            exam_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
-            print("[WARNING] Uploaded template selected but not found, using default")
+            # No default.txt file, use original template
+            exam_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
     else:
-        # Use default template
-        exam_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+        # Use the specifically selected template
+        exam_template_path = os.path.join(WORD_TEMPLATES_FOLDER, selected_word_template)
+        
+        # If the selected template doesn't exist, fall back to default
+        if not os.path.exists(exam_template_path):
+            # Try to read default from default.txt
+            default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
+            if os.path.exists(default_file_path):
+                with open(default_file_path, 'r') as f:
+                    default_template_name = f.read().strip()
+                exam_template_path = os.path.join(WORD_TEMPLATES_FOLDER, default_template_name)
+                print(f"[WARNING] Selected Word template {selected_word_template} not found, using default {default_template_name}")
+                
+                if not os.path.exists(exam_template_path):
+                    exam_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
+                    print(f"[WARNING] Default template {default_template_name} also not found, using original")
+            else:
+                exam_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
+                print(f"[WARNING] Selected Word template {selected_word_template} not found and no default.txt, using original")
+    
+    print(f"[DEBUG] Using Word template: {exam_template_path}")
     
     exam_tpl = DocxTemplate(exam_template_path)
-    answer_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "exam-answerkey-tpl_clean.docx"))
+    answer_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "answerkey", "exam-answerkey-tpl_clean.docx"))
 
     exam_path = os.path.join(OUTPUT_DIR, f"exam_{session_id}.docx")
     key_path = os.path.join(OUTPUT_DIR, f"answerkey_{session_id}.docx")
@@ -379,7 +423,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         print(f"[ERROR] Failed to render exam template: {e}")
         # Try with the default template as fallback
         print(f"[DEBUG] Falling back to default template")
-        default_template_path = os.path.join(TEMPLATE_DIR, "exam-paper-tpl_clean.docx")
+        default_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
         exam_tpl = DocxTemplate(default_template_path)
         exam_tpl.render(context)
         exam_tpl.save(exam_path)
