@@ -1,14 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   Box,
   Stack,
   Typography,
   Button,
   Tooltip,
+  Fab,
+  Badge,
 } from '@mui/material';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
 import LockIcon from '@mui/icons-material/Lock';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
 import { Question } from '../../types';
 import { useQuestionEditor } from './hooks';
@@ -16,6 +19,7 @@ import { getShuffleInfo, getShuffleTooltip } from './shuffleUtils';
 import { createShuffleHandler } from './shuffleLogic';
 import FakeAnswers from './FakeAnswers';
 import RegularQuestion from './RegularQuestion';
+import DuplicatePanel from './DuplicatePanel';
 
 interface QuestionEditorProps {
   questions: Question[];
@@ -30,6 +34,9 @@ export default function QuestionEditor({
   onQuestionsChange, 
   forceRefreshLocks 
 }: QuestionEditorProps) {
+  const [isDuplicatePanelOpen, setIsDuplicatePanelOpen] = useState(false);
+  const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  
   const {
     editingQuestions,
     setEditingQuestions,
@@ -113,6 +120,57 @@ export default function QuestionEditor({
     hasAutoShuffled.current = false;
   };
 
+  const duplicateCount = questions.filter(q => {
+    if (!q.is_duplicate || !q.duplicate_group_id) return false;
+    // Count how many questions in current exam have the same duplicate_group_id
+    const sameGroupQuestions = questions.filter(other => 
+      other.duplicate_group_id === q.duplicate_group_id
+    );
+    return sameGroupQuestions.length > 1;
+  }).length;
+  
+  const duplicateGroups = new Set(
+    questions
+      .filter(q => {
+        if (!q.is_duplicate || !q.duplicate_group_id) return false;
+        const sameGroupQuestions = questions.filter(other => 
+          other.duplicate_group_id === q.duplicate_group_id
+        );
+        return sameGroupQuestions.length > 1;
+      })
+      .map(q => q.duplicate_group_id)
+  );
+
+  const handleScrollToQuestion = (index: number) => {
+    questionRefs.current[index]?.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'center' 
+    });
+  };
+
+  const handleShowDuplicates = () => {
+    setIsDuplicatePanelOpen(true);
+  };
+
+  const getDuplicateTooltipText = (question: Question) => {
+    if (!question.is_duplicate || !question.duplicate_group_id) return '';
+    
+    const groupQuestions = questions.filter(q => 
+      q.duplicate_group_id === question.duplicate_group_id && 
+      q !== question
+    );
+    
+    // Only show tooltip if there are actually other questions in the group in current exam
+    if (groupQuestions.length === 0) return '';
+    
+    const questionNumbers = groupQuestions.map((q) => {
+      const idx = questions.indexOf(q);
+      return `Q${idx + 1}`;
+    }).join(', ');
+    
+    return `Similar to: ${questionNumbers}`;
+  };
+
   const shuffleInfo = getShuffleInfo(questions, allQuestionsPool, lockedQuestions, getQuestionId, getContentHash);
   const handleShuffleQuestions = createShuffleHandler(
     questions,
@@ -172,32 +230,33 @@ export default function QuestionEditor({
   }, []);
 
   return (
-    <Stack spacing={2}>
-      {/* Show warning only for significant ID collisions */}
-      {hasIdCollisions && questions.length > 1 && (
-        <Box sx={{
-          p: 2,
-          background: 'rgba(255,255,255,0.12)',
-          boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          borderRadius: 1,
-          border: '1px solid rgba(255,255,255,0.18)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2
-        }}>
-          <Typography variant="body2" sx={{ color: '#1a1a1a', flex: 1 }}>
-            ⚠️ Some questions have similar content and may share lock states. Check browser console for details.
-          </Typography>
-        </Box>
-      )}
+    <Box sx={{ position: 'relative' }}>
+      <Stack spacing={2}>
+        {/* Show warning only for significant ID collisions */}
+        {hasIdCollisions && questions.length > 1 && (
+          <Box sx={{
+            p: 2,
+            background: 'rgba(255,255,255,0.12)',
+            boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            borderRadius: 1,
+            border: '1px solid rgba(255,255,255,0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2
+          }}>
+            <Typography variant="body2" sx={{ color: '#1a1a1a', flex: 1 }}>
+              ⚠️ Some questions have similar content and may share lock states. Check browser console for details.
+            </Typography>
+          </Box>
+        )}
 
-      {/* Show info about locks in other tabs */}
-      {lockedQuestions.size > 0 && !questions.some((q, i) => lockedQuestions.has(getQuestionId(q, i))) && (
-        <Box sx={{
-          p: 2,
-          background: 'rgba(255,255,255,0.12)',
+        {/* Show info about locks in other tabs */}
+        {lockedQuestions.size > 0 && !questions.some((q, i) => lockedQuestions.has(getQuestionId(q, i))) && (
+          <Box sx={{
+            p: 2,
+            background: 'rgba(255,255,255,0.12)',
           boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
           backdropFilter: 'blur(8px)',
           WebkitBackdropFilter: 'blur(8px)',
@@ -287,22 +346,61 @@ export default function QuestionEditor({
         const currentQuestion = isEditing ? tempQuestions[index] || question : question;
 
         return (
-          <RegularQuestion
+          <div
             key={`question-${index}-${question.type}`}
-            question={question}
-            index={index}
-            isEditing={isEditing}
-            isLocked={isLocked}
-            currentQuestion={currentQuestion}
-            questionId={questionId}
-            onQuestionChange={handleQuestionChange}
-            onEdit={handleEdit}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            onLockToggle={handleLockToggle}
-          />
+            ref={(el) => { questionRefs.current[index] = el; }}
+          >
+            <RegularQuestion
+              question={question}
+              index={index}
+              isEditing={isEditing}
+              isLocked={isLocked}
+              currentQuestion={currentQuestion}
+              questionId={questionId}
+              allQuestions={questions}
+              onQuestionChange={handleQuestionChange}
+              onEdit={handleEdit}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              onLockToggle={handleLockToggle}
+              onShowDuplicates={handleShowDuplicates}
+              duplicateTooltipText={getDuplicateTooltipText(question)}
+            />
+          </div>
         );
       })}
     </Stack>
+
+    {/* Floating Action Button for Duplicates */}
+    {duplicateCount > 0 && (
+      <Fab
+        color="warning"
+        sx={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 1000,
+          backgroundColor: '#ff9800',
+          '&:hover': {
+            backgroundColor: '#f57c00',
+          },
+        }}
+        onClick={() => setIsDuplicatePanelOpen(true)}
+      >
+        <Badge badgeContent={duplicateGroups.size} color="error">
+          <ContentCopyIcon />
+        </Badge>
+      </Fab>
+    )}
+
+    {/* Duplicate Management Panel */}
+    <DuplicatePanel
+      open={isDuplicatePanelOpen}
+      onClose={() => setIsDuplicatePanelOpen(false)}
+      questions={questions}
+      onQuestionsChange={onQuestionsChange}
+      onScrollToQuestion={handleScrollToQuestion}
+    />
+  </Box>
   );
 }

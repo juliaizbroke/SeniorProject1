@@ -63,19 +63,28 @@ export default function CategoryPage() {
   }, [questions]);
 
   return (
-    <Box sx={{ bgcolor: '#e3e9f7', minHeight: '100vh', color: '#222', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', color: '#222' }}>
       <Navbar />
-      <Box sx={{ px: 4, py: 6, position: 'relative', zIndex: 1 }}>
+      {/* Page content container that seamlessly connects with navbar */}
+      <Box 
+        sx={{ 
+          backgroundColor: 'white',
+          minHeight: 'calc(100vh - 96px)', // Account for smaller navbar height
+          px: 4, 
+          py: 0, // Remove top padding to connect with navbar
+          pt: 4, // Add top padding back for content spacing
+        }}
+      >
         <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
           <Typography
             variant="h4"
             sx={{ color: "#1a1a1a", fontWeight: 700, mb: 2, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
           >
-            Edit Exam Metadata & Select Questions by Category
+            Select Categories
           </Typography>
           <Typography
             variant="subtitle1"
-            sx={{ color: "#333", fontWeight: 400, mb: 4, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
+            sx={{ color: "#666", fontWeight: 400, mb: 4, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
           >
             Choose the number of questions from each category to include in your exam.
           </Typography>

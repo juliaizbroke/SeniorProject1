@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
   InputLabel,
+  Badge,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
@@ -19,6 +20,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import WarningIcon from '@mui/icons-material/Warning';
 import { Question } from '../../types';
 
 const QuestionPaper = styled(Paper)(({ theme }) => ({
@@ -37,11 +40,14 @@ interface RegularQuestionProps {
   isLocked: boolean;
   currentQuestion: Question;
   questionId: string;
+  allQuestions: Question[]; // Add this to check for actual duplicates
   onQuestionChange: (index: number, field: keyof Question, value: string | boolean) => void;
   onEdit: (questionId: string) => void;
   onSave: (questionId: string) => void;
   onCancel: (questionId: string) => void;
   onLockToggle: (questionId: string) => void;
+  onShowDuplicates?: () => void;
+  duplicateTooltipText?: string;
 }
 
 export default function RegularQuestion({
@@ -51,11 +57,14 @@ export default function RegularQuestion({
   isLocked,
   currentQuestion,
   questionId,
+  allQuestions,
   onQuestionChange,
   onEdit,
   onSave,
   onCancel,
   onLockToggle,
+  onShowDuplicates,
+  duplicateTooltipText,
 }: RegularQuestionProps) {
   const getQuestionChoices = (question: Question) => {
     if (question.type.toLowerCase() === 'multiple choice') {
@@ -67,75 +76,163 @@ export default function RegularQuestion({
     return [];
   };
 
+  // Check if this question is actually a duplicate in the current exam
+  const isActualDuplicate = () => {
+    if (!question.is_duplicate || !question.duplicate_group_id) return false;
+    
+    // Count how many questions in the current exam have the same duplicate_group_id
+    const sameGroupQuestions = allQuestions.filter(q => 
+      q.duplicate_group_id === question.duplicate_group_id
+    );
+    
+    return sameGroupQuestions.length > 1;
+  };
+
+  const getDuplicateBackgroundColor = () => {
+    if (!isActualDuplicate()) return 'rgba(255,255,255,0.12)';
+    
+    if (question.duplicate_representative) {
+      return 'rgba(76, 175, 80, 0.08)'; // Light green for representative
+    }
+    
+    const similarity = question.duplicate_similarity || 0;
+    if (similarity >= 0.9) return 'rgba(244, 67, 54, 0.08)'; // Light red for high similarity
+    if (similarity >= 0.8) return 'rgba(255, 152, 0, 0.08)'; // Light orange
+    return 'rgba(255, 235, 59, 0.08)'; // Light yellow for medium similarity
+  };
+
+  const getDuplicateBorderColor = () => {
+    if (!isActualDuplicate()) return isLocked ? '#4682b4' : 'rgba(255,255,255,0.18)';
+    
+    if (question.duplicate_representative) return '#4caf50';
+    
+    const similarity = question.duplicate_similarity || 0;
+    if (similarity >= 0.9) return '#f44336';
+    if (similarity >= 0.8) return '#ff9800';
+    return '#ffeb3b';
+  };
+
   return (
     <QuestionPaper 
       key={`question-${index}-${question.type}`} 
       elevation={0}
       sx={{
         opacity: isLocked ? 0.8 : 1,
-  borderColor: question.is_duplicate ? (question.duplicate_representative ? '#1d8348' : '#c0392b') : (isLocked ? '#4682b4' : '#e0e0e0'),
-  borderWidth: question.is_duplicate ? '2px' : (isLocked ? '2px' : '1px'),
-        background: 'rgba(255,255,255,0.12)',
-        boxShadow: '0 8px 32px 0 rgba(31,38,135,0.18)',
+        borderColor: getDuplicateBorderColor(),
+        borderWidth: isActualDuplicate() ? '2px' : (isLocked ? '2px' : '1px'),
+        background: getDuplicateBackgroundColor(),
+        boxShadow: isActualDuplicate() ? 
+          `0 8px 32px 0 ${getDuplicateBorderColor()}20` : 
+          '0 8px 32px 0 rgba(31,38,135,0.18)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         borderRadius: 2,
-        border: '1px solid rgba(255,255,255,0.18)',
+        border: `${isActualDuplicate() ? '2px' : (isLocked ? '2px' : '1px')} solid ${getDuplicateBorderColor()}`,
+        position: 'relative',
+        transition: 'all 0.3s ease-in-out',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: isActualDuplicate() ? 
+            `0 12px 40px 0 ${getDuplicateBorderColor()}30` : 
+            '0 12px 40px 0 rgba(31,38,135,0.25)',
+        }
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="body1" fontWeight="500" sx={{ mb: 1 }}>
-            {currentQuestion.question || 'Untitled Question'}
-          </Typography>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            <Chip
-              label={`Category: ${question.category}`}
-              color="default"
-              variant="outlined"
-              size="small"
-              sx={{ fontSize: '0.7rem', height: '20px' }}
-            />
-            {question.is_duplicate && (
-              <Chip
-                label={question.duplicate_representative ? 'Duplicate Group Rep' : `Duplicate G${question.duplicate_group_id}`}
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+          {/* Duplicate warning icon */}
+          {isActualDuplicate() && (
+            <Tooltip 
+              title={duplicateTooltipText || `This question is similar to other questions in Group ${question.duplicate_group_id}`}
+              arrow
+            >
+              <IconButton
                 size="small"
+                onClick={() => onShowDuplicates?.()}
                 sx={{
-                  fontSize: '0.65rem',
-                  height: '20px',
-                  backgroundColor: question.duplicate_representative ? '#1d8348' : '#c0392b',
-                  color: 'white',
-                  fontWeight: 600
+                  p: 0.5,
+                  color: question.duplicate_representative ? '#4caf50' : '#ff5722',
+                  '&:hover': {
+                    backgroundColor: question.duplicate_representative ? 'rgba(76, 175, 80, 0.1)' : 'rgba(255, 87, 34, 0.1)',
+                  }
                 }}
-              />
-            )}
-            {question.is_duplicate && typeof question.duplicate_similarity === 'number' && !question.duplicate_representative && (
+              >
+                <Badge
+                  badgeContent={question.duplicate_group_id}
+                  color="error"
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      fontSize: '0.6rem',
+                      minWidth: '16px',
+                      height: '16px',
+                    }
+                  }}
+                >
+                  {question.duplicate_representative ? <ContentCopyIcon fontSize="small" /> : <WarningIcon fontSize="small" />}
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
+          
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="body1" fontWeight="500" sx={{ mb: 1 }}>
+              {currentQuestion.question || 'Untitled Question'}
+            </Typography>
+            <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
               <Chip
-                label={`Sim: ${(question.duplicate_similarity*100).toFixed(0)}%`}
+                label={`Category: ${question.category}`}
+                color="default"
+                variant="outlined"
                 size="small"
-                sx={{
-                  fontSize: '0.65rem',
-                  height: '20px',
-                  backgroundColor: '#f39c12',
-                  color: '#222',
-                  fontWeight: 600
-                }}
+                sx={{ fontSize: '0.7rem', height: '20px' }}
               />
-            )}
-            {isLocked && (
-              <Chip
-                label="Locked"
-                size="small"
-                sx={{ 
-                  fontSize: '0.7rem', 
-                  height: '20px',
-                  backgroundColor: '#4682b4',
-                  color: 'white',
-                  fontWeight: 'bold'
-                }}
-              />
-            )}
-          </Stack>
+              {isActualDuplicate() && (
+                <Tooltip title={question.duplicate_representative ? 
+                  'This is the representative question that will be kept by default' : 
+                  `Similarity: ${Math.round((question.duplicate_similarity || 0) * 100)}%`}>
+                  <Chip
+                    label={question.duplicate_representative ? 'Representative' : `Group ${question.duplicate_group_id}`}
+                    size="small"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: '20px',
+                      backgroundColor: question.duplicate_representative ? '#4caf50' : getDuplicateBorderColor(),
+                      color: 'white',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                    onClick={() => onShowDuplicates?.()}
+                  />
+                </Tooltip>
+              )}
+              {isActualDuplicate() && typeof question.duplicate_similarity === 'number' && !question.duplicate_representative && (
+                <Chip
+                  label={`${Math.round(question.duplicate_similarity * 100)}% similar`}
+                  size="small"
+                  sx={{
+                    fontSize: '0.65rem',
+                    height: '20px',
+                    backgroundColor: '#f39c12',
+                    color: '#222',
+                    fontWeight: 600
+                  }}
+                />
+              )}
+              {isLocked && (
+                <Chip
+                  label="Locked"
+                  size="small"
+                  sx={{ 
+                    fontSize: '0.7rem', 
+                    height: '20px',
+                    backgroundColor: '#4682b4',
+                    color: 'white',
+                    fontWeight: 'bold'
+                  }}
+                />
+              )}
+            </Stack>
+          </Box>
         </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>

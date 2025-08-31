@@ -11,29 +11,27 @@ export default function LandingPage() {
   const router = useRouter();
 
   return (
-    <Box
-      minHeight="100vh"
-      sx={{
-        bgcolor: "#e3e9f7",
-        color: "#222",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', color: '#222' }}>
       <Navbar />
-      <Container
-        maxWidth="md"
-        sx={{
-          mt: 5,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "80vh",
-          position: "relative",
-          zIndex: 1,
+      {/* Page content container that seamlessly connects with navbar */}
+      <Box 
+        sx={{ 
+          backgroundColor: 'white',
+          minHeight: 'calc(100vh - 96px)', // Account for smaller navbar height
         }}
       >
+        <Container
+          maxWidth="md"
+          sx={{
+            pt: 6,
+            pb: 4,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            minHeight: "calc(100vh - 160px)",
+          }}
+        >
         <Box className="fade-in" sx={{ width: "100%" }}>
           <Typography variant="h2" fontWeight={700} sx={{ mb: 2, color: "#1a1a1a", textAlign: "center", letterSpacing: 1 }}>
             Welcome to Aurex
@@ -102,6 +100,7 @@ export default function LandingPage() {
           </Box>
         </Box>
       </Container>
+      </Box>
     </Box>
   );
 }

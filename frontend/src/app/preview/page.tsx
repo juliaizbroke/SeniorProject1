@@ -344,16 +344,25 @@ function PreviewPageContent() {
   );
 
   return (
-    <Box sx={{ bgcolor: "white", minHeight: "100vh" }}>
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', color: '#222' }}>
       <Navbar />
-      <Box sx={{ px: 4, py: 6 }}>
+      {/* Page content container that seamlessly connects with navbar */}
+      <Box 
+        sx={{ 
+          backgroundColor: 'white',
+          minHeight: 'calc(100vh - 96px)', // Account for smaller navbar height
+          px: 4, 
+          py: 0, // Remove top padding to connect with navbar
+          pt: 4, // Add top padding back for content spacing
+        }}
+      >
         <Box sx={{ maxWidth: "1200px", mx: "auto" }}>
           <Typography
             variant="h4"
             sx={{
               fontWeight: 700,
               mb: 2,
-              color: "#1e3a8a",
+              color: "#1a1a1a",
               fontFamily: "var(--sds-typography-title-hero-font-family)",
             }}
           >

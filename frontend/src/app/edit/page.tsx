@@ -8,7 +8,6 @@ import {
   Button,
   Tab,
   Tabs,
-  Divider,
   Snackbar,
   Alert
 } from "@mui/material";
@@ -90,16 +89,29 @@ export default function EditPage() {
   }, [questions, tabIndex, getAvailableQuestionTypes]);
 
   const duplicateSummary = useMemo(() => {
-    const groups = new Map<number, { rep?: string; count: number }>();
+    const groups = new Map<number, { rep?: string; count: number; questionsInGroup: Question[] }>();
+    
     questions.forEach(q => {
       if (q.is_duplicate && q.duplicate_group_id) {
-        const g = groups.get(q.duplicate_group_id) || { count: 0 };
-        g.count += 1;
-        if (q.duplicate_representative) g.rep = q.question?.slice(0,80);
-        groups.set(q.duplicate_group_id, g);
+        const existingGroup = groups.get(q.duplicate_group_id) || { count: 0, questionsInGroup: [] };
+        existingGroup.count += 1;
+        existingGroup.questionsInGroup.push(q);
+        if (q.duplicate_representative) {
+          existingGroup.rep = q.question?.slice(0, 80);
+        }
+        groups.set(q.duplicate_group_id, existingGroup);
       }
     });
-    return { count: groups.size, groups };
+
+    // Filter out groups that only have 1 question in the current exam
+    const actualDuplicateGroups = new Map();
+    groups.forEach((group, groupId) => {
+      if (group.count > 1) { // Only keep groups with multiple questions in current exam
+        actualDuplicateGroups.set(groupId, group);
+      }
+    });
+
+    return { count: actualDuplicateGroups.size, groups: actualDuplicateGroups };
   }, [questions]);
   
   // Function to get tab label based on index
@@ -175,9 +187,18 @@ export default function EditPage() {
 
 
   return (
-    <Box sx={{ bgcolor: '#e3e9f7', minHeight: '100vh', color: '#222', position: 'relative', overflow: 'hidden' }}>
+    <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', color: '#222' }}>
       <Navbar />
-      <Box sx={{ px: 4, py: 6, position: 'relative', zIndex: 1 }}>
+      {/* Page content container that seamlessly connects with navbar */}
+      <Box 
+        sx={{ 
+          backgroundColor: 'white',
+          minHeight: 'calc(100vh - 96px)', // Account for smaller navbar height (56px toolbar + 40px tabs)
+          px: 4, 
+          py: 0, // Remove top padding to connect with navbar
+          pt: 4, // Add top padding back for content spacing
+        }}
+      >
         <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
           <Typography
             variant="h4"
@@ -187,28 +208,86 @@ export default function EditPage() {
           </Typography>
           <Typography
             variant="subtitle1"
-            sx={{ color: "#333", fontWeight: 400, mb: 4, fontFamily: 'var(--sds-typography-title-hero-font-family)' }}
+            sx={{ color: "#666", fontWeight: 400, mb: 4, fontFamily: 'var(--sds-typography-title-hero-font-family)' }}
           >
             Review and edit your exam questions before generating the final documents.
           </Typography>
-          <Box sx={{ mb: 4 }}>
-            <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.18)' }} />
-          </Box>
           {duplicateSummary.count > 0 && (
             <Box sx={{
               mb: 3,
-              p: 2.5,
-              background: '#fffbe6',
-              border: '1px solid #f5d36b',
-              borderRadius: 2,
-              color: '#795500'
+              p: 3,
+              background: 'linear-gradient(135deg, #fff3e0 0%, #ffecb3 100%)',
+              border: '1px solid #ff9800',
+              borderRadius: 3,
+              color: '#e65100',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, #ff9800, #f57c00)',
+              }
             }}>
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                {duplicateSummary.count} duplicate group{duplicateSummary.count!==1?'s':''} detected.
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Box sx={{ 
+                  p: 1, 
+                  borderRadius: '50%', 
+                  backgroundColor: '#ff9800', 
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minWidth: '32px',
+                  height: '32px',
+                }}>
+                  <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.75rem' }}>
+                    {duplicateSummary.count}
+                  </Typography>
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: '#e65100' }}>
+                  Duplicate Question Group{duplicateSummary.count !== 1 ? 's' : ''} Detected
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ color: '#bf360c', mb: 2 }}>
+                Review similar questions using the floating action button or inline indicators. 
+                You can merge, replace, or ignore duplicates as needed.
               </Typography>
-              <Typography variant="caption" sx={{ display: 'block', mt: .5 }}>
-                Green border = representative question kept by system. Red border = similar question you may revise or remove manually.
-              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  px: 2, 
+                  py: 0.5, 
+                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                  borderRadius: 2,
+                  border: '1px solid #4caf50'
+                }}>
+                  <Box sx={{ width: 12, height: 12, backgroundColor: '#4caf50', borderRadius: '50%' }} />
+                  <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+                    Representative (will be kept)
+                  </Typography>
+                </Box>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  px: 2, 
+                  py: 0.5, 
+                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                  borderRadius: 2,
+                  border: '1px solid #f44336'
+                }}>
+                  <Box sx={{ width: 12, height: 12, backgroundColor: '#f44336', borderRadius: '50%' }} />
+                  <Typography variant="caption" sx={{ color: '#c62828', fontWeight: 600 }}>
+                    Similar (review needed)
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
           )}
           <Tabs
