@@ -76,7 +76,7 @@ const Navbar: React.FC = () => {
         </Toolbar>
 
         {/* Breadcrumb Navigation */}
-        <Box sx={{ 
+        {/* <Box sx={{ 
           px: 4, 
           position: 'relative',
           height: '40px', // Reduced height
@@ -139,7 +139,7 @@ const Navbar: React.FC = () => {
               />
             ))}
           </Tabs>
-        </Box>
+        </Box> */}
       </AppBar>
     </Box>
   );

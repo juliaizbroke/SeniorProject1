@@ -389,13 +389,15 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
           {snackbarMessage}
         </Alert>
       </Snackbar>
+      
+      {/* Apply Filters Button Container */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, mb: 2 }}>
         <Tooltip title="Apply your category selections and filter the question list">
           <Button 
             variant="contained" 
             onClick={handleApplyFilters}
             startIcon={<FilterAltIcon />}
             sx={{
-              float: 'right',
               backgroundColor: '#1e3a8a',
               color: '#fff',
               '&:hover': {
@@ -408,6 +410,7 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
             Apply Filters
           </Button>
         </Tooltip>
+      </Box>
       {/* Confirmation Dialog */}
       <Dialog
         open={confirmDialogOpen}
