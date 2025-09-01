@@ -69,10 +69,10 @@ export default function CategoryPage() {
       <Box 
         sx={{ 
           backgroundColor: 'white',
-          minHeight: 'calc(100vh - 96px)', // Account for smaller navbar height
           px: 4, 
           py: 0, // Remove top padding to connect with navbar
           pt: 4, // Add top padding back for content spacing
+          pb: 4, // Add bottom padding back for content spacing
         }}
       >
         <Box sx={{ maxWidth: '1200px', mx: 'auto' }}>
@@ -219,7 +219,6 @@ export default function CategoryPage() {
             {snackbar.message}
           </Alert>
         </Snackbar>
-        <Divider sx={{ my: 10, borderColor: "#e2e8f0" }} />
         </Box>
       </Box>
     </Box>

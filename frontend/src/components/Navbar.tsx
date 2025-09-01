@@ -1,35 +1,35 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Box, Tab, Tabs } from '@mui/material';
-import { useRouter, usePathname } from 'next/navigation';
+import { AppBar, Toolbar, Typography, Box} from '@mui/material';
+import { useRouter } from 'next/navigation';
 
 const Navbar: React.FC = () => {
   const router = useRouter();
-  const pathname = usePathname();
+  //const pathname = usePathname();
 
-  const getActiveStep = () => {
-    switch (pathname) {
-      case '/': return 0;
-      case '/category': return 1;
-      case '/edit': return 2;
-      case '/preview': return 3;
-      default: return 0;
-    }
-  };
+  // const getActiveStep = () => {
+  //   switch (pathname) {
+  //     case '/': return 0;
+  //     case '/category': return 1;
+  //     case '/edit': return 2;
+  //     case '/preview': return 3;
+  //     default: return 0;
+  //   }
+  // };
 
-  const steps = [
-    { label: 'Upload', path: '/home', disabled: false },
-    { label: 'Select Categories', path: '/category', disabled: false },
-    { label: 'Edit', path: '/edit', disabled: false },
-    { label: 'Preview', path: '/preview', disabled: false },
-  ];
+  // const steps = [
+  //   { label: 'Upload', path: '/home', disabled: false },
+  //   { label: 'Select Categories', path: '/category', disabled: false },
+  //   { label: 'Edit', path: '/edit', disabled: false },
+  //   { label: 'Preview', path: '/preview', disabled: false },
+  // ];
 
-  const activeStep = getActiveStep();
+  //const activeStep = getActiveStep();
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    if (!steps[newValue].disabled) {
-      router.push(steps[newValue].path);
-    }
-  };
+  //const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    //if (!steps[newValue].disabled) {
+      //router.push(steps[newValue].path);
+    //}
+  //};
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -76,7 +76,7 @@ const Navbar: React.FC = () => {
         </Toolbar>
 
         {/* Breadcrumb Navigation */}
-        <Box sx={{ 
+        {/* <Box sx={{ 
           px: 4, 
           position: 'relative',
           height: '40px', // Reduced height
@@ -139,7 +139,7 @@ const Navbar: React.FC = () => {
               />
             ))}
           </Tabs>
-        </Box>
+        </Box> */}
       </AppBar>
     </Box>
   );
