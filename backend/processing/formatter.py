@@ -93,47 +93,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     # Set random seed based on current time to ensure different randomization each time
     random.seed()
     
-    # Determine which template to use for images - use the same logic as for main template
-    WORD_TEMPLATES_FOLDER = os.path.join(TEMPLATE_DIR, "paper")
-    
-    if selected_word_template == "default" or not selected_word_template:
-        # Check if there's a default.txt file that specifies the default template
-        default_file_path = os.path.join(WORD_TEMPLATES_FOLDER, "default.txt")
-        if os.path.exists(default_file_path):
-            with open(default_file_path, 'r') as f:
-                default_template_name = f.read().strip()
-            template_for_images = os.path.join(WORD_TEMPLATES_FOLDER, default_template_name)
-            
-            # If the default template file doesn't exist, fall back to original
-            if not os.path.exists(template_for_images):
-                template_for_images = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
-        else:
-            # No default.txt file, use original template
-            template_for_images = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
-    else:
-        # Use the specifically selected template
-        template_for_images = os.path.join(WORD_TEMPLATES_FOLDER, selected_word_template)
-        
-        # If the selected template doesn't exist, fall back to default
-        if not os.path.exists(template_for_images):
-            template_for_images = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
-    
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
-        image_obj = None
-        print(f"[DEBUG] MCQ {i} image field: {q.get('image')}")
-        if q.get("image") and q.get("image") not in ["#VALUE!", "", "N/A", None]:
-            image_path = os.path.join(TEMPLATE_DIR, q["image"]) if not os.path.isabs(q["image"]) else q["image"]
-            print(f"[DEBUG] MCQ {i} resolved image_path: {image_path}")
-            if os.path.exists(image_path) and os.path.isfile(image_path):
-                try:
-                    image_obj = InlineImage(DocxTemplate(template_for_images), image_path, width=Mm(30))
-                    print(f"[DEBUG] MCQ {i} image loaded successfully")
-                except Exception as e:
-                    print(f"[DEBUG] MCQ {i} failed to load image: {e}")
-            else:
-                print(f"[DEBUG] MCQ {i} image file does not exist: {image_path}")
-        else:
-            print(f"[DEBUG] MCQ {i} skipping invalid/empty image field")
         mc_questions.append({
             "no": i,
             "question": q["question"],
@@ -142,13 +102,17 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             "c": q["c"],
             "d": q["d"],
             "e": q["e"],
-            "image": image_obj,
+            "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None,  # Store filename for later processing
             "long": q.get("is_long", False)
         })
         mc_answers.append({"no": i, "ans": q["answer"]})
 
     for i, q in enumerate(filtered.get("true/false", []), 1):
-        tf_questions.append({"no": i, "question": q["question"]})
+        tf_questions.append({
+            "no": i, 
+            "question": q["question"],
+            "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
+        })
         tf_answers.append({"no": i, "ans": q["answer"]})
         
     # For matching questions, we'll group them all into one matching exercise
@@ -160,10 +124,17 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         # Extract all questions and correct answers from matching questions
         questions_list = []
         correct_answers_list = []
+        questions_with_images = []  # Track which questions have images
         
         for q in matching_questions:
             questions_list.append(q["question"])
             correct_answers_list.append(q["answer"])
+            
+            # Store image filename for later processing
+            questions_with_images.append({
+                "question": q["question"],
+                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None
+            })
         
         matching_items_count = len(questions_list)  # Set the count of matching items
         
@@ -185,7 +156,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         match_questions.append({
             "no": 1,
             "question": "Match the following",
-            "column_a": questions_list,  # All questions in column A
+            "column_a": questions_with_images,  # Questions with images in column A
             "column_b": all_column_b_options  # All answers (correct + fake) shuffled in column B
         })
         
@@ -213,11 +184,12 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         print(f"[DEBUG] Written question q_type: '{q_type}' | question: '{q['question'][:50]}...'")
         
         # Determine if it's a short or long question based on q_type
-        if q_type == "short":
+        if q_type == "short":            
             question_data = {
                 "no": sq_counter,
                 "question": q["question"],
-                "category": q.get("category", "")
+                "category": q.get("category", ""),
+                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
             }
             answer_data = {
                 "no": sq_counter,
@@ -231,7 +203,8 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             question_data = {
                 "no": lq_counter,
                 "question": q["question"],
-                "category": q.get("category", "")
+                "category": q.get("category", ""),
+                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
             }
             answer_data = {
                 "no": lq_counter,
@@ -246,7 +219,8 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             question_data = {
                 "no": sq_counter,
                 "question": q["question"],
-                "category": q.get("category", "")
+                "category": q.get("category", ""),
+                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
             }
             answer_data = {
                 "no": sq_counter,
@@ -404,10 +378,103 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                 exam_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
                 print(f"[WARNING] Selected Word template {selected_word_template} not found and no default.txt, using original")
     
-    print(f"[DEBUG] Using Word template: {exam_template_path}")
-    
     exam_tpl = DocxTemplate(exam_template_path)
     answer_tpl = DocxTemplate(os.path.join(TEMPLATE_DIR, "answerkey", "exam-answerkey-tpl_clean.docx"))
+    
+    # Create images dictionary for template access
+    images_dict = {}
+    
+    # Process all questions to create InlineImage objects at render time
+    for mc_q in mc_questions:
+        if mc_q.get("image_filename"):
+            try:
+                image_path = os.path.join(TEMPLATE_DIR, "images", mc_q["image_filename"])
+                if os.path.exists(image_path):
+                    images_dict[mc_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                    mc_q["image"] = images_dict[mc_q["image_filename"]]
+                    print(f"[DEBUG] ✅ Created MC image for question {mc_q.get('no', '?')}: {mc_q['image_filename']}")
+                else:
+                    mc_q["image"] = None
+                    print(f"[DEBUG] ❌ MC image file not found: {image_path}")
+            except Exception as e:
+                print(f"Error creating MC image {mc_q['image_filename']}: {e}")
+                mc_q["image"] = None
+        else:
+            mc_q["image"] = None
+    
+    for tf_q in tf_questions:
+        if tf_q.get("image_filename"):
+            try:
+                image_path = os.path.join(TEMPLATE_DIR, "images", tf_q["image_filename"])
+                if os.path.exists(image_path):
+                    if tf_q["image_filename"] not in images_dict:
+                        images_dict[tf_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                    tf_q["image"] = images_dict[tf_q["image_filename"]]
+                    print(f"[DEBUG] ✅ Created TF image for question {tf_q.get('no', '?')}: {tf_q['image_filename']}")
+                else:
+                    tf_q["image"] = None
+                    print(f"[DEBUG] ❌ TF image file not found: {image_path}")
+            except Exception as e:
+                print(f"Error creating TF image {tf_q['image_filename']}: {e}")
+                tf_q["image"] = None
+        else:
+            tf_q["image"] = None
+    
+    for sq_q in sq_questions:
+        if sq_q.get("image_filename"):
+            try:
+                image_path = os.path.join(TEMPLATE_DIR, "images", sq_q["image_filename"])
+                if os.path.exists(image_path):
+                    if sq_q["image_filename"] not in images_dict:
+                        images_dict[sq_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                    sq_q["image"] = images_dict[sq_q["image_filename"]]
+                    print(f"[DEBUG] ✅ Created SQ image for question {sq_q.get('no', '?')}: {sq_q['image_filename']}")
+                else:
+                    sq_q["image"] = None
+                    print(f"[DEBUG] ❌ SQ image file not found: {image_path}")
+            except Exception as e:
+                print(f"Error creating SQ image {sq_q['image_filename']}: {e}")
+                sq_q["image"] = None
+        else:
+            sq_q["image"] = None
+    
+    for lq_q in lq_questions:
+        if lq_q.get("image_filename"):
+            try:
+                image_path = os.path.join(TEMPLATE_DIR, "images", lq_q["image_filename"])
+                if os.path.exists(image_path):
+                    if lq_q["image_filename"] not in images_dict:
+                        images_dict[lq_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                    lq_q["image"] = images_dict[lq_q["image_filename"]]
+                    print(f"[DEBUG] ✅ Created LQ image for question {lq_q.get('no', '?')}: {lq_q['image_filename']}")
+                else:
+                    lq_q["image"] = None
+                    print(f"[DEBUG] ❌ LQ image file not found: {image_path}")
+            except Exception as e:
+                print(f"Error creating LQ image {lq_q['image_filename']}: {e}")
+                lq_q["image"] = None
+        else:
+            lq_q["image"] = None
+    
+    # Update matching questions
+    for match_q in match_questions:
+        for item_a in match_q.get("column_a", []):
+            if item_a.get("image_filename"):
+                try:
+                    image_path = os.path.join(TEMPLATE_DIR, "images", item_a["image_filename"])
+                    if os.path.exists(image_path):
+                        if item_a["image_filename"] not in images_dict:
+                            images_dict[item_a["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                        item_a["image"] = images_dict[item_a["image_filename"]]
+                        print(f"[DEBUG] ✅ Created Matching image for item '{item_a.get('question', '?')}': {item_a['image_filename']}")
+                    else:
+                        item_a["image"] = None
+                        print(f"[DEBUG] ❌ Matching image file not found: {image_path}")
+                except Exception as e:
+                    print(f"Error creating matching image {item_a['image_filename']}: {e}")
+                    item_a["image"] = None
+            else:
+                item_a["image"] = None
 
     exam_path = os.path.join(OUTPUT_DIR, f"exam_{session_id}.docx")
     key_path = os.path.join(OUTPUT_DIR, f"answerkey_{session_id}.docx")

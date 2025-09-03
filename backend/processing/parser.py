@@ -3,8 +3,6 @@
 import pandas as pd
 from io import BytesIO
 import datetime
-import openpyxl
-from openpyxl_image_loader import SheetImageLoader
 import os
 from .duplicate_detector import QuestionDuplicateDetector, annotate_duplicates_in_questions
 import logging
@@ -90,40 +88,18 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
     # ---- Extract Questions ----
     all_questions = []
 
-
     # Multiple Choice
     df_mc = xls.parse("MultipleChoice")
-    # Load workbook and sheet with openpyxl for image extraction
-    wb = openpyxl.load_workbook(file)
-    ws = wb["MultipleChoice"]
-    image_loader = SheetImageLoader(ws)
-    # Map column names to indices
-    col_map = {cell.value: idx for idx, cell in enumerate(next(ws.iter_rows(min_row=1, max_row=1)), 0)}
-    images_dir = os.path.join(os.path.dirname(__file__), "templates", "images")
-    os.makedirs(images_dir, exist_ok=True)
-    # Print all coordinates where images are found
-    print(f"[DEBUG] ImageLoader found images at: {list(image_loader._images.keys())}")
     for i, row in enumerate(df_mc.itertuples(index=False), 2):  # DataFrame is 0-based, Excel is 1-based, skip header
         # Check if any option has length >= 20
         options = [str(getattr(row, opt, "")) for opt in ['a', 'b', 'c', 'd', 'e']]
         is_long = any(len(opt) >= 20 for opt in options)
-        # Extract image if present
-        image_path = ""
-        if "image" in col_map:
-            excel_col_idx = col_map["image"]
-            cell = ws.cell(row=i, column=excel_col_idx+1)  # openpyxl is 1-based
-            print(f"[DEBUG] Checking cell for image: {cell.coordinate}")
-            if image_loader.image_in(cell.coordinate):
-                img = image_loader.get(cell.coordinate)
-                image_path = os.path.join(images_dir, f"mcq_{i}.png")
-                img.save(image_path)
-                image_path = os.path.relpath(image_path, os.path.dirname(__file__))
-                print(f"[DEBUG] Parsed image for MCQ row {i}: {image_path}")
-            else:
-                val = cell.value
-                if val and isinstance(val, str):
-                    image_path = val
-                    print(f"[DEBUG] Parsed legacy image path for MCQ row {i}: {image_path}")
+        
+        # Extract image description if present
+        image_description = ""
+        if hasattr(row, 'image') and row.image:
+            image_description = str(row.image).strip()
+        
         all_questions.append({
             "type": "multiple choice",
             "question": getattr(row, "question", ""),
@@ -134,28 +110,40 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
             "e": getattr(row, "e", ""),
             "answer": getattr(row, "ans", ""),
             "category": getattr(row, "category", ""),
-            "image": image_path,
+            "image_description": image_description,
             "is_long": is_long
         })
 
     # True/False
     df_tf = xls.parse("TrueFalse")
     for _, row in df_tf.iterrows():
+        # Extract image description if present
+        image_description = ""
+        if 'image' in row and row['image'] and pd.notna(row['image']):
+            image_description = str(row['image']).strip()
+            
         all_questions.append({
             "type": "true/false",
             "question": row.get("question", ""),
             "answer": row.get("ans", ""),
-            "category": row.get("category", "")
+            "category": row.get("category", ""),
+            "image_description": image_description
         })
 
     # Matching
     df_match = xls.parse("Matching")
     for _, row in df_match.iterrows():
-       all_questions.append({
+        # Extract image description if present
+        image_description = ""
+        if 'image' in row and row['image'] and pd.notna(row['image']):
+            image_description = str(row['image']).strip()
+            
+        all_questions.append({
             "type": "matching",
             "question": row.get("question", ""),
             "answer": row.get("ans", ""),
-            "category": row.get("category", "")
+            "category": row.get("category", ""),
+            "image_description": image_description
         })
 
     # Fake Answers (for matching questions distractors)
@@ -175,12 +163,18 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
     # Written Question
     df_written = xls.parse("WrittenQuestion")
     for _, row in df_written.iterrows():
+        # Extract image description if present
+        image_description = ""
+        if 'image' in row and row['image'] and pd.notna(row['image']):
+            image_description = str(row['image']).strip()
+            
         all_questions.append({
             "type": "written question",
             "question": row.get("question", ""),
             "answer": row.get("ans", ""),
             "q_type": row.get("q_type", ""),
-            "category": row.get("category", "")
+            "category": row.get("category", ""),
+            "image_description": image_description
         })
 
     # ---- Apply Duplicate Detection ----

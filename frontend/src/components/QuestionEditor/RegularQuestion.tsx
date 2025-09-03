@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Stack,
@@ -13,6 +13,7 @@ import {
   MenuItem,
   InputLabel,
   Badge,
+  Button,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
@@ -66,6 +67,26 @@ export default function RegularQuestion({
   onShowDuplicates,
   duplicateTooltipText,
 }: RegularQuestionProps) {
+  // Local state for immediate image display
+  const [localImageData, setLocalImageData] = useState<{
+    has_uploaded_image: boolean;
+    uploaded_image_url?: string;
+    uploaded_image_filename?: string;
+  }>({
+    has_uploaded_image: Boolean(currentQuestion.has_uploaded_image || currentQuestion.uploaded_image_url),
+    uploaded_image_url: currentQuestion.uploaded_image_url,
+    uploaded_image_filename: currentQuestion.uploaded_image_filename,
+  });
+
+  // Update local state when currentQuestion changes
+  useEffect(() => {
+    setLocalImageData({
+      has_uploaded_image: Boolean(currentQuestion.has_uploaded_image || currentQuestion.uploaded_image_url),
+      uploaded_image_url: currentQuestion.uploaded_image_url,
+      uploaded_image_filename: currentQuestion.uploaded_image_filename,
+    });
+  }, [currentQuestion.has_uploaded_image, currentQuestion.uploaded_image_url, currentQuestion.uploaded_image_filename]);
+
   const getQuestionChoices = (question: Question) => {
     if (question.type.toLowerCase() === 'multiple choice') {
       return ['a', 'b', 'c', 'd', 'e'].map(choice => ({
@@ -110,6 +131,61 @@ export default function RegularQuestion({
     if (similarity >= 0.9) return '#f44336';
     if (similarity >= 0.8) return '#ff9800';
     return '#ffeb3b';
+  };
+
+  // Handle image upload for this question
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log('Starting image upload for question:', index, file.name);
+
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('question_id', index.toString());
+      formData.append('session_id', Date.now().toString()); // Simple session ID
+
+      console.log('Sending request to upload endpoint...');
+
+      const response = await fetch('http://localhost:5000/upload-question-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('Upload response status:', response.status);
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Upload error:', error);
+        throw new Error(error.error || 'Upload failed');
+      }
+
+      const result = await response.json();
+      console.log('✅ Image upload successful:', result.filename);
+      
+      // Update local state immediately for instant display
+      const imageUrl = `http://localhost:5000/images/${result.filename}`;
+      setLocalImageData({
+        has_uploaded_image: true,
+        uploaded_image_filename: result.filename,
+        uploaded_image_url: imageUrl,
+      });
+      
+      // Update question data in parent component
+      onQuestionChange(index, 'has_uploaded_image', true);
+      onQuestionChange(index, 'uploaded_image_filename', result.filename);
+      onQuestionChange(index, 'uploaded_image_url', imageUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    }
   };
 
   return (
@@ -308,6 +384,61 @@ export default function RegularQuestion({
           />
         )}
 
+        {/* Image Upload Button (only when editing) */}
+        {isEditing && (
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1, fontSize: '0.85rem' }}>
+              Image {currentQuestion.image_description ? `(${currentQuestion.image_description})` : ''}
+            </Typography>
+            <Button
+              variant="outlined"
+              component="label"
+              size="small"
+              sx={{ minWidth: '120px' }}
+            >
+              {(currentQuestion.uploaded_image_url || localImageData.uploaded_image_url) ? 'Change Image' : 'Upload Image'}
+              <input
+                hidden
+                accept="image/*"
+                type="file"
+                onChange={handleImageUpload}
+              />
+            </Button>
+          </Box>
+        )}
+
+        {/* Image Display (shown always when image exists, between question and options) */}
+        {(currentQuestion.uploaded_image_url || localImageData.uploaded_image_url) && (
+          <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ 
+              maxWidth: '600px', 
+              textAlign: 'center',
+              border: '2px solid #e0e0e0',
+              borderRadius: 2,
+              p: 2,
+              bgcolor: '#fafafa'
+            }}>
+              <img
+                src={localImageData.uploaded_image_url || currentQuestion.uploaded_image_url}
+                alt="Question image"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '300px',
+                  objectFit: 'contain',
+                  borderRadius: '4px'
+                }}
+                onLoad={() => console.log('✅ Image loaded successfully:', localImageData.uploaded_image_url || currentQuestion.uploaded_image_url)}
+                onError={(e) => console.error('❌ Image failed to load:', localImageData.uploaded_image_url || currentQuestion.uploaded_image_url, e)}
+              />
+              {isEditing && (
+                <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'text.secondary' }}>
+                  {localImageData.uploaded_image_filename || currentQuestion.uploaded_image_filename}
+                </Typography>
+              )}
+            </Box>
+          </Box>
+        )}
+
         {/* Multiple Choice Options */}
         {currentQuestion.type.toLowerCase() === 'multiple choice' && (
           <Box>
@@ -352,7 +483,7 @@ export default function RegularQuestion({
                       )}
                     </Box>
                     <Typography variant="body2" sx={{ color: 'text.primary' }}>
-                      {key.toUpperCase()}. {value}
+                      {key.toUpperCase()}. {String(value)}
                     </Typography>
                   </Box>
                 ))}
@@ -380,7 +511,7 @@ export default function RegularQuestion({
                       >
                         {getQuestionChoices(currentQuestion).map(({ key, value }) => (
                           <MenuItem key={key} value={key} disabled={!value}>
-                            {key.toUpperCase()}. {value || 'Empty option'}
+                            {key.toUpperCase()}. {String(value) || 'Empty option'}
                           </MenuItem>
                         ))}
                       </Select>

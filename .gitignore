@@ -16,5 +16,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Test files (ignore any test scripts)
+test_*.py
+*test*.py
+test/
+tests/
+
 output/
 backend/output/*

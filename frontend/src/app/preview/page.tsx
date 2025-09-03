@@ -184,6 +184,32 @@ function PreviewPageContent() {
       <Typography variant="h6" sx={{ mb: 2, color: '#1e3a8a' }}>
         {index + 1}. {question.question}
       </Typography>
+      
+      {/* Display uploaded image if available */}
+      {question.uploaded_image_url && (
+        <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ 
+            maxWidth: '600px', 
+            textAlign: 'center',
+            border: '2px solid #e0e0e0',
+            borderRadius: 2,
+            p: 2,
+            bgcolor: '#fafafa'
+          }}>
+            <img
+              src={question.uploaded_image_url}
+              alt="Question image"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '300px',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+      
       <Stack spacing={1} sx={{ ml: 2 }}>
         {['a', 'b', 'c', 'd', 'e'].map((option) => {
           const optionValue = question[option as keyof Question] as string;
@@ -232,6 +258,32 @@ function PreviewPageContent() {
       <Typography variant="h6" sx={{ mb: 2, color: '#1e3a8a' }}>
         {index + 1}. {question.question}
       </Typography>
+      
+      {/* Display uploaded image if available */}
+      {question.uploaded_image_url && (
+        <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ 
+            maxWidth: '600px', 
+            textAlign: 'center',
+            border: '2px solid #e0e0e0',
+            borderRadius: 2,
+            p: 2,
+            bgcolor: '#fafafa'
+          }}>
+            <img
+              src={question.uploaded_image_url}
+              alt="Question image"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '300px',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+      
       {showAnswers && (
         <Typography sx={{ fontWeight: 600, color: '#4caf50', ml: 2 }}>
           Answer: {question.answer}
@@ -278,9 +330,25 @@ function PreviewPageContent() {
             </Typography>
             <Stack spacing={1}>
               {matchingQuestions.map((question, index) => (
-                <Typography key={index}>
-                  {index + 1}. {question.question}
-                </Typography>
+                <Box key={index}>
+                  <Typography>
+                    {index + 1}. {question.question}
+                  </Typography>
+                  {question.uploaded_image_url && (
+                    <Box sx={{ mt: 1 }}>
+                      <img
+                        src={question.uploaded_image_url}
+                        alt="Question image"
+                        style={{
+                          maxWidth: '100%',
+                          maxHeight: '200px',
+                          objectFit: 'contain',
+                          borderRadius: '4px'
+                        }}
+                      />
+                    </Box>
+                  )}
+                </Box>
               ))}
             </Stack>
           </Box>
@@ -323,6 +391,32 @@ function PreviewPageContent() {
       <Typography variant="h6" sx={{ mb: 2, color: '#1e3a8a' }}>
         {index + 1}. {question.question}
       </Typography>
+      
+      {/* Display uploaded image if available */}
+      {question.uploaded_image_url && (
+        <Box sx={{ mt: 2, mb: 2, display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ 
+            maxWidth: '600px', 
+            textAlign: 'center',
+            border: '2px solid #e0e0e0',
+            borderRadius: 2,
+            p: 2,
+            bgcolor: '#fafafa'
+          }}>
+            <img
+              src={question.uploaded_image_url}
+              alt="Question image"
+              style={{
+                maxWidth: '100%',
+                maxHeight: '300px',
+                objectFit: 'contain',
+                borderRadius: '4px'
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+      
       {showAnswers && (
         <Box sx={{ mt: 2, p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
