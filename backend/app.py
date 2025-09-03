@@ -229,6 +229,70 @@ def upload_template():
         print(f"Error processing template upload: {str(e)}")
         return jsonify({"error": f"Failed to process template file: {str(e)}"}), 500
 
+@app.route("/upload-question-image", methods=["POST"])
+def upload_question_image():
+    """Upload an image for a specific question"""
+    try:
+        if 'image' not in request.files:
+            return jsonify({"error": "No image file in the request"}), 400
+        
+        file = request.files['image']
+        question_id = request.form.get('question_id')
+        session_id = request.form.get('session_id', 'default')
+        
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        if not question_id:
+            return jsonify({"error": "Question ID is required"}), 400
+        
+        # Check if file is an image
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+        file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        
+        if file_extension not in allowed_extensions:
+            return jsonify({"error": "Invalid file format. Please upload an image file"}), 400
+        
+        # Create secure filename
+        original_filename = secure_filename(file.filename)
+        filename = f"{session_id}_{question_id}_{int(time.time())}_{original_filename}"
+        
+        # Save to images directory
+        images_dir = os.path.join("processing", "templates", "images")
+        os.makedirs(images_dir, exist_ok=True)
+        
+        file_path = os.path.join(images_dir, filename)
+        file.save(file_path)
+        
+        # Register file for cleanup
+        file_registry[file_path] = time.time()
+        cleanup_thread = threading.Thread(target=cleanup_file_after_delay, args=(file_path,))
+        cleanup_thread.start()
+        
+        return jsonify({
+            "success": True, 
+            "filename": filename,
+            "file_path": f"images/{filename}"
+        })
+    except Exception as e:
+        print(f"Error processing image upload: {str(e)}")
+        return jsonify({"error": f"Failed to process image file: {str(e)}"}), 500
+
+@app.route("/images/<filename>")
+def serve_image(filename):
+    """Serve uploaded images"""
+    try:
+        images_dir = os.path.join("processing", "templates", "images")
+        file_path = os.path.join(images_dir, filename)
+        
+        if not os.path.exists(file_path):
+            return jsonify({"error": "Image not found"}), 404
+            
+        return send_file(file_path)
+    except Exception as e:
+        print(f"Error serving image: {str(e)}")
+        return jsonify({"error": f"Failed to serve image: {str(e)}"}), 500
+
 @app.route("/check-template", methods=["GET"])
 def check_template():
     """Check if an uploaded template exists"""
@@ -592,4 +656,4 @@ def download_default_word_template():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

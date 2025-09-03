@@ -11,6 +11,12 @@ export interface Question {
   e?: string;
   is_long?: boolean;
   image?: string;
+  // New image handling fields
+  image_description?: string;  // Description from Excel
+  uploaded_image_file?: File | null;
+  uploaded_image_url?: string;  // URL for frontend display
+  uploaded_image_filename?: string;  // Filename on server
+  has_uploaded_image?: boolean;
   // True/False specific fields
   // Matching specific fields
   // Written answer specific fields
