@@ -133,6 +133,21 @@ function PreviewPageContent() {
     try {
       setLoading(true);
       setError("");
+      
+      // Debug: Log the questions being sent
+      console.log('[DEBUG] Questions being sent to generateExam:');
+      questions.forEach((q, i) => {
+        if (q.has_uploaded_image || q.uploaded_image_filename) {
+          console.log(`[DEBUG] Question ${i+1}:`, {
+            type: q.type,
+            has_uploaded_image: q.has_uploaded_image,
+            typeof_has_uploaded_image: typeof q.has_uploaded_image,
+            uploaded_image_filename: q.uploaded_image_filename,
+            typeof_uploaded_image_filename: typeof q.uploaded_image_filename
+          });
+        }
+      });
+      
       const response: GenerateResponse = await generateExam({
         session_id: sessionId,
         questions,
