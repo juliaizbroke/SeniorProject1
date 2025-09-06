@@ -148,6 +148,11 @@ export default function QuestionEditor({
     });
   };
 
+  // Grammar issues summary
+  const grammarIssueIndexes = questions
+    .map((q, i) => (q.has_grammar_issues ? i : -1))
+    .filter((i) => i >= 0);
+
   const handleShowDuplicates = () => {
     setIsDuplicatePanelOpen(true);
   };
@@ -249,6 +254,31 @@ export default function QuestionEditor({
             <Typography variant="body2" sx={{ color: '#1a1a1a', flex: 1 }}>
               ⚠️ Some questions have similar content and may share lock states. Check browser console for details.
             </Typography>
+          </Box>
+        )}
+
+        {/* Grammar issues summary */}
+        {grammarIssueIndexes.length > 0 && (
+          <Box sx={{
+            p: 2,
+            background: '#fff7ed',
+            borderRadius: 1,
+            border: '1px solid #ffedd5',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+          }}>
+            <Typography variant="body2" sx={{ color: '#7a5200', flex: 1 }}>
+              {grammarIssueIndexes.length} question{grammarIssueIndexes.length !== 1 ? 's' : ''} with potential grammar issue{grammarIssueIndexes.length !== 1 ? 's' : ''}.
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => handleScrollToQuestion(grammarIssueIndexes[0])}
+              sx={{ borderColor: '#f59e0b', color: '#b45309' }}
+            >
+              Jump to first
+            </Button>
           </Box>
         )}
 

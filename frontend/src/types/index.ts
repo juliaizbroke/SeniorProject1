@@ -26,6 +26,22 @@ export interface Question {
   duplicate_group_id?: number;
   duplicate_representative?: boolean;
   duplicate_similarity?: number;
+  // Grammar metadata (annotated by backend)
+  has_grammar_issues?: boolean;
+  grammar_issue_count?: number;
+  grammar_issues?: Array<{
+    field: 'question' | 'answer';
+    issues: Array<GrammarIssueDetail>;
+  }>;
+}
+
+export interface GrammarIssueDetail {
+  message: string;
+  ruleId?: string;
+  offset?: number;
+  length?: number;
+  context?: { text?: string; offset?: number; length?: number } | null;
+  replacements?: string[];
 }
 
 export interface QuestionMetadata {
@@ -40,6 +56,15 @@ export interface QuestionMetadata {
   lecturer: string;
   date: string;
   time: string;
+  // Optional grammar summary from backend
+  grammar_check?: {
+    enabled: boolean;
+    lang?: string;
+    questions_with_issues?: number;
+    total_issues?: number;
+    error?: string;
+    reason?: string;
+  };
   selection_settings: {
     [questionType: string]: {
       [category: string]: number;
