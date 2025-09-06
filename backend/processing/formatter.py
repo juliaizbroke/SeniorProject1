@@ -2,13 +2,34 @@
 
 import os
 import random
-from docxtpl import DocxTemplate, InlineImage, RichText
+from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
 from docx import Document
-from docx.enum.text import WD_BREAK
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "output")
+
+def get_optimal_image_width(image_path):
+    """
+    Get optimal image width for Word document based on image dimensions.
+    Returns width in millimeters that maintains good aspect ratio.
+    """
+    try:
+        from PIL import Image
+        with Image.open(image_path) as img:
+            width, height = img.size
+            aspect_ratio = width / height
+            
+            # Base width for different aspect ratios
+            if aspect_ratio > 1.5:  # Wide image (landscape)
+                return Mm(80)
+            elif aspect_ratio < 0.7:  # Tall image (portrait) 
+                return Mm(50)
+            else:  # Square-ish image
+                return Mm(70)
+    except Exception:
+        # Fallback if PIL is not available or image can't be opened
+        return Mm(70)
 
 
 def filter_and_randomize(questions, settings):
@@ -70,6 +91,9 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     print(f"[DEBUG] Question types: {[q.get('type', 'unknown') for q in questions]}")
     print(f"[DEBUG] Selected Word template: {selected_word_template}")
     
+    # Track images used in this generation for cleanup
+    images_used = set()
+    
     # Step 1: Filter & randomize if needed
     filtered = filter_and_randomize(questions, metadata.get("selection_settings", {}))
     
@@ -94,6 +118,18 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     random.seed()
     
     for i, q in enumerate(filtered.get("multiple choice", []), 1):
+        # Extract filename from uploaded_image_url if needed
+        image_filename = None
+        if q.get("uploaded_image_filename") and q.get("uploaded_image_filename") != "None":
+            image_filename = q.get("uploaded_image_filename")
+        elif q.get("uploaded_image_url"):
+            # Extract filename from URL like "http://localhost:5000/images/filename.jpg"
+            import re
+            url_match = re.search(r'/images/([^/?]+)', q.get("uploaded_image_url"))
+            if url_match:
+                image_filename = url_match.group(1)
+                images_used.add(image_filename)  # Track for cleanup
+        
         mc_questions.append({
             "no": i,
             "question": q["question"],
@@ -102,16 +138,27 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             "c": q["c"],
             "d": q["d"],
             "e": q["e"],
-            "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None,  # Store filename for later processing
+            "image_filename": image_filename,  # Use extracted or provided filename
             "long": q.get("is_long", False)
         })
         mc_answers.append({"no": i, "ans": q["answer"]})
 
     for i, q in enumerate(filtered.get("true/false", []), 1):
+        # Extract filename from uploaded_image_url if needed
+        image_filename = None
+        if q.get("uploaded_image_filename") and q.get("uploaded_image_filename") != "None":
+            image_filename = q.get("uploaded_image_filename")
+        elif q.get("uploaded_image_url"):
+            import re
+            url_match = re.search(r'/images/([^/?]+)', q.get("uploaded_image_url"))
+            if url_match:
+                image_filename = url_match.group(1)
+                images_used.add(image_filename)  # Track for cleanup
+        
         tf_questions.append({
             "no": i, 
             "question": q["question"],
-            "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
+            "image_filename": image_filename
         })
         tf_answers.append({"no": i, "ans": q["answer"]})
         
@@ -130,10 +177,20 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             questions_list.append(q["question"])
             correct_answers_list.append(q["answer"])
             
+            # Extract filename from uploaded_image_url if needed
+            image_filename = None
+            if q.get("uploaded_image_filename") and q.get("uploaded_image_filename") != "None":
+                image_filename = q.get("uploaded_image_filename")
+            elif q.get("uploaded_image_url"):
+                import re
+                url_match = re.search(r'/images/([^/?]+)', q.get("uploaded_image_url"))
+                if url_match:
+                    image_filename = url_match.group(1)
+            
             # Store image filename for later processing
             questions_with_images.append({
                 "question": q["question"],
-                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None
+                "image_filename": image_filename
             })
         
         matching_items_count = len(questions_list)  # Set the count of matching items
@@ -184,12 +241,22 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         print(f"[DEBUG] Written question q_type: '{q_type}' | question: '{q['question'][:50]}...'")
         
         # Determine if it's a short or long question based on q_type
+        # Extract filename from uploaded_image_url if needed
+        image_filename = None
+        if q.get("uploaded_image_filename") and q.get("uploaded_image_filename") != "None":
+            image_filename = q.get("uploaded_image_filename")
+        elif q.get("uploaded_image_url"):
+            import re
+            url_match = re.search(r'/images/([^/?]+)', q.get("uploaded_image_url"))
+            if url_match:
+                image_filename = url_match.group(1)
+        
         if q_type == "short":            
             question_data = {
                 "no": sq_counter,
                 "question": q["question"],
                 "category": q.get("category", ""),
-                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
+                "image_filename": image_filename
             }
             answer_data = {
                 "no": sq_counter,
@@ -204,7 +271,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                 "no": lq_counter,
                 "question": q["question"],
                 "category": q.get("category", ""),
-                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
+                "image_filename": image_filename
             }
             answer_data = {
                 "no": lq_counter,
@@ -220,7 +287,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                 "no": sq_counter,
                 "question": q["question"],
                 "category": q.get("category", ""),
-                "image_filename": q.get("uploaded_image_filename") if q.get("has_uploaded_image") else None  # Store filename for later processing
+                "image_filename": image_filename
             }
             answer_data = {
                 "no": sq_counter,
@@ -323,19 +390,6 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         "lqanswers": lq_answers,
     }
     
-    # Try different page break methods
-    try:
-        # Method 1: RichText with page break
-        page_break_obj = RichText()
-        page_break_obj.add('', break_=WD_BREAK.PAGE)
-        context["page_break"] = page_break_obj
-        print("[DEBUG] Using RichText page break")
-    except Exception as e:
-        print(f"[DEBUG] RichText page break failed: {e}")
-        # Method 2: Use form feed character as fallback
-        context["page_break"] = "\f"
-        print("[DEBUG] Using form feed character for page break")
-    
     print(f"[DEBUG] Context variables: {list(context.keys())}")
 
     # Step 4: Render Word files
@@ -390,7 +444,9 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             try:
                 image_path = os.path.join(TEMPLATE_DIR, "images", mc_q["image_filename"])
                 if os.path.exists(image_path):
-                    images_dict[mc_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                    # Use smart sizing based on image aspect ratio
+                    optimal_width = get_optimal_image_width(image_path)
+                    images_dict[mc_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=optimal_width)
                     mc_q["image"] = images_dict[mc_q["image_filename"]]
                     print(f"[DEBUG] ✅ Created MC image for question {mc_q.get('no', '?')}: {mc_q['image_filename']}")
                 else:
@@ -408,12 +464,12 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                 image_path = os.path.join(TEMPLATE_DIR, "images", tf_q["image_filename"])
                 if os.path.exists(image_path):
                     if tf_q["image_filename"] not in images_dict:
-                        images_dict[tf_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                        # Use smart sizing based on image aspect ratio
+                        optimal_width = get_optimal_image_width(image_path)
+                        images_dict[tf_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=optimal_width)
                     tf_q["image"] = images_dict[tf_q["image_filename"]]
-                    print(f"[DEBUG] ✅ Created TF image for question {tf_q.get('no', '?')}: {tf_q['image_filename']}")
                 else:
                     tf_q["image"] = None
-                    print(f"[DEBUG] ❌ TF image file not found: {image_path}")
             except Exception as e:
                 print(f"Error creating TF image {tf_q['image_filename']}: {e}")
                 tf_q["image"] = None
@@ -426,7 +482,9 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                 image_path = os.path.join(TEMPLATE_DIR, "images", sq_q["image_filename"])
                 if os.path.exists(image_path):
                     if sq_q["image_filename"] not in images_dict:
-                        images_dict[sq_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                        # Use smart sizing based on image aspect ratio
+                        optimal_width = get_optimal_image_width(image_path)
+                        images_dict[sq_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=optimal_width)
                     sq_q["image"] = images_dict[sq_q["image_filename"]]
                     print(f"[DEBUG] ✅ Created SQ image for question {sq_q.get('no', '?')}: {sq_q['image_filename']}")
                 else:
@@ -444,7 +502,9 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                 image_path = os.path.join(TEMPLATE_DIR, "images", lq_q["image_filename"])
                 if os.path.exists(image_path):
                     if lq_q["image_filename"] not in images_dict:
-                        images_dict[lq_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                        # Use smart sizing based on image aspect ratio
+                        optimal_width = get_optimal_image_width(image_path)
+                        images_dict[lq_q["image_filename"]] = InlineImage(exam_tpl, image_path, width=optimal_width)
                     lq_q["image"] = images_dict[lq_q["image_filename"]]
                     print(f"[DEBUG] ✅ Created LQ image for question {lq_q.get('no', '?')}: {lq_q['image_filename']}")
                 else:
@@ -464,7 +524,9 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
                     image_path = os.path.join(TEMPLATE_DIR, "images", item_a["image_filename"])
                     if os.path.exists(image_path):
                         if item_a["image_filename"] not in images_dict:
-                            images_dict[item_a["image_filename"]] = InlineImage(exam_tpl, image_path, width=Mm(80), height=Mm(60))
+                            # Use smart sizing based on image aspect ratio
+                            optimal_width = get_optimal_image_width(image_path)
+                            images_dict[item_a["image_filename"]] = InlineImage(exam_tpl, image_path, width=optimal_width)
                         item_a["image"] = images_dict[item_a["image_filename"]]
                         print(f"[DEBUG] ✅ Created Matching image for item '{item_a.get('question', '?')}': {item_a['image_filename']}")
                     else:
@@ -499,4 +561,4 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     answer_tpl.render(context)
     answer_tpl.save(key_path)
 
-    return exam_path, key_path
+    return exam_path, key_path, images_used

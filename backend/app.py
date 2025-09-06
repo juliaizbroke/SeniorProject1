@@ -83,10 +83,11 @@ def cleanup_expired_files():
         except Exception as e:
             print(f"Error cleaning up expired file {file_path}: {e}")
 
-def register_file_for_cleanup(file_path):
+def register_file_for_cleanup(file_path, delay_minutes=None):
     """Register a file for cleanup tracking"""
     file_registry[file_path] = time.time()
-    cleanup_file_after_delay(file_path, FILE_EXPIRY_MINUTES)
+    cleanup_delay = delay_minutes if delay_minutes is not None else FILE_EXPIRY_MINUTES
+    cleanup_file_after_delay(file_path, cleanup_delay)
 
 def convert_docx_to_html(docx_path):
     """Convert DOCX file to HTML for preview"""
@@ -414,11 +415,20 @@ def generate():
         shuffled_matching_order = data.get('shuffledMatchingOrder', None)  # Get shuffled order
         
         print(f"[DEBUG] Generate endpoint - selectedWordTemplate: {selected_word_template}")
-
-        exam_path, key_path = generate_word_files(questions, metadata, session_id, selected_template, shuffled_matching_order, selected_word_template)
+        
+        exam_path, key_path, images_used = generate_word_files(questions, metadata, session_id, selected_template, shuffled_matching_order, selected_word_template)
+        
         # Register Word files for automatic cleanup
         register_file_for_cleanup(exam_path)
         register_file_for_cleanup(key_path)
+        
+        # Register used images for cleanup after a delay (so they don't get cleaned up immediately)
+        for image_filename in images_used:
+            # Use absolute path like in formatter.py
+            template_dir = os.path.join(os.path.dirname(__file__), "processing", "templates")
+            image_path = os.path.join(template_dir, "images", image_filename)
+            if os.path.exists(image_path):
+                register_file_for_cleanup(image_path, delay_minutes=5)  # Clean up images after 5 minutes
         # Remove HTML preview generation and related fields
         cleanup_expired_files()
         response_data = {
