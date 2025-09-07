@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   Box,
   Stack,
@@ -23,6 +24,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import WarningIcon from '@mui/icons-material/Warning';
+import SpellcheckIcon from '@mui/icons-material/Spellcheck';
 import { Question } from '../../types';
 
 const QuestionPaper = styled(Paper)(({ theme }) => ({
@@ -262,6 +264,22 @@ export default function RegularQuestion({
                 size="small"
                 sx={{ fontSize: '0.7rem', height: '20px' }}
               />
+              {question.has_grammar_issues && (
+                <Tooltip title={`Potential grammar issue${(question.grammar_issue_count || 0) > 1 ? 's' : ''} detected`}>
+                  <Chip
+                    icon={<SpellcheckIcon sx={{ fontSize: '0.9rem' }} />}
+                    label={`Potential grammar error${(question.grammar_issue_count || 0) > 1 ? 's' : ''}`}
+                    size="small"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: '20px',
+                      backgroundColor: '#fde68a',
+                      color: '#7a5200',
+                      fontWeight: 600,
+                    }}
+                  />
+                </Tooltip>
+              )}
               {isActualDuplicate() && (
                 <Tooltip title={question.duplicate_representative ? 
                   'This is the representative question that will be kept by default' : 
@@ -418,11 +436,15 @@ export default function RegularQuestion({
               p: 2,
               bgcolor: '#fafafa'
             }}>
-              <img
-                src={localImageData.uploaded_image_url || currentQuestion.uploaded_image_url}
+              <Image
+                src={localImageData.uploaded_image_url || currentQuestion.uploaded_image_url || ''}
                 alt="Question image"
+                width={600}
+                height={300}
+                unoptimized
                 style={{
-                  maxWidth: '100%',
+                  width: '100%',
+                  height: 'auto',
                   maxHeight: '300px',
                   objectFit: 'contain',
                   borderRadius: '4px'
