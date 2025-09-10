@@ -1,0 +1,28 @@
+{
+  "session_id": "similarity_1757463918_86568ce1",
+  "created_at": "2025-09-10T07:25:18.389341",
+  "files_uploaded": [
+    {
+      "name": "exam1.docx",
+      "original_name": "exam1.docx",
+      "size": 40797,
+      "upload_time": 1757463926.7000291
+    },
+    {
+      "name": "exam2.docx",
+      "original_name": "exam2.docx",
+      "size": 40887,
+      "upload_time": 1757463926.7000291
+    },
+    {
+      "name": "exam3.docx",
+      "original_name": "exam3.docx",
+      "size": 40542,
+      "upload_time": 1757463926.7000291
+    }
+  ],
+  "analysis_completed": true,
+  "expires_at": "2025-09-10T09:25:18.389341",
+  "analysis_time": "2025-09-10T07:25:29.833624",
+  "total_comparisons": 3
+}

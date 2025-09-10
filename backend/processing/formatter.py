@@ -320,29 +320,43 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     
     # Now assign part numbers only to sections that exist
     if len(mc_questions) > 0:
-        part_numbers['mc_part'] = roman_numerals[part_counter - 1]
+        roman_numeral = roman_numerals[part_counter - 1]
+        part_numbers['mc_part'] = roman_numeral
+        part_numbers['mc_part_formatted'] = roman_numeral + '\t' if roman_numeral in ['I', 'II'] else roman_numeral
         part_numbers['has_mc'] = True
         part_counter += 1
     
     if len(tf_questions) > 0:
-        part_numbers['tf_part'] = roman_numerals[part_counter - 1]
+        roman_numeral = roman_numerals[part_counter - 1]
+        part_numbers['tf_part'] = roman_numeral
+        part_numbers['tf_part_formatted'] = roman_numeral + '\t' if roman_numeral in ['I', 'II'] else roman_numeral
         part_numbers['has_tf'] = True
         part_counter += 1
     
     if matching_items_count > 0:
-        part_numbers['match_part'] = roman_numerals[part_counter - 1]
+        roman_numeral = roman_numerals[part_counter - 1]
+        part_numbers['match_part'] = roman_numeral
+        part_numbers['match_part_formatted'] = roman_numeral + '\t' if roman_numeral in ['I', 'II'] else roman_numeral
         part_numbers['has_match'] = True
         part_counter += 1
     
     if len(sq_questions) > 0:
-        part_numbers['sq_part'] = roman_numerals[part_counter - 1]
+        roman_numeral = roman_numerals[part_counter - 1]
+        part_numbers['sq_part'] = roman_numeral
+        part_numbers['sq_part_formatted'] = roman_numeral + '\t' if roman_numeral in ['I', 'II'] else roman_numeral
         part_numbers['has_sq'] = True
         part_counter += 1
     
     if len(lq_questions) > 0:
-        part_numbers['lq_part'] = roman_numerals[part_counter - 1]
+        roman_numeral = roman_numerals[part_counter - 1]
+        part_numbers['lq_part'] = roman_numeral
+        part_numbers['lq_part_formatted'] = roman_numeral + '\t' if roman_numeral in ['I', 'II'] else roman_numeral
         part_numbers['has_lq'] = True
         part_counter += 1
+    
+    # Calculate total number of parts
+    total_parts = part_counter - 1
+    part_numbers['total_parts'] = total_parts
     
     # Calculate next part numbers for "Continue to Part X" messages
     sections = []
@@ -364,6 +378,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
             part_numbers[f'next_after_{section_type}'] = next_part_num
     
     print(f"[DEBUG] Part numbers assigned: {part_numbers}")
+    print(f"[DEBUG] Total parts calculated: {total_parts}")
 
     # Step 3: Prepare context for rendering
     context = {
@@ -391,6 +406,8 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
     }
     
     print(f"[DEBUG] Context variables: {list(context.keys())}")
+    print(f"[DEBUG] Total parts in context: {context.get('total_parts', 'NOT FOUND')}")
+    print(f"[DEBUG] Part numbers in context: mc_part={context.get('mc_part', '')}, tf_part={context.get('tf_part', '')}, match_part={context.get('match_part', '')}, sq_part={context.get('sq_part', '')}, lq_part={context.get('lq_part', '')}")
 
     # Step 4: Render Word files
     # Determine which Word template to use

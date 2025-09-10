@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -16,21 +16,40 @@ import {
   ListItemText,
   Divider,
   LinearProgress,
+  Paper,
+  Card,
+  CardContent,
 } from "@mui/material";
+import { useDropzone } from 'react-dropzone';
 import DownloadIcon from '@mui/icons-material/Download';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import StarIcon from '@mui/icons-material/Star';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadIcon from '@mui/icons-material/Upload';
-import FileUpload from "../../components/FileUpload";
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DescriptionIcon from '@mui/icons-material/Description';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Navbar from "../../components/Navbar";
+import ProcessingModal from "../../components/ProcessingModal";
+import { useProcessing } from "../../hooks/useProcessing";
 import { uploadExcel } from "../../utils/api";
 import { UploadResponse } from "../../types";
+
+interface ExcelUploadItem {
+  id: string;
+  file: File;
+  progress: number;
+  status: 'uploading' | 'completed' | 'error';
+}
 
 export default function HomePage() {
   const [error, setError] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // Excel upload states
+  const [excelUploadItems, setExcelUploadItems] = useState<ExcelUploadItem[]>([]);
+  const [isDragActive, setIsDragActive] = useState(false);
   
   // Word template states
   const [wordTemplates, setWordTemplates] = useState<Array<{ id: string; name: string; isDefault: boolean }>>([]);
@@ -39,6 +58,9 @@ export default function HomePage() {
   const [selectedWordTemplateForMenu, setSelectedWordTemplateForMenu] = useState<string>("");
   const [isWordUploading, setIsWordUploading] = useState<boolean>(false);
   const [wordUploadProgress, setWordUploadProgress] = useState<number>(0);
+  
+  // Processing modal state
+  const { processingState, startProcessing, stopProcessing } = useProcessing();
   
   const router = useRouter();
 
@@ -84,32 +106,96 @@ export default function HomePage() {
     }
   };
 
-  // Handle file upload with progress
-  const handleFileUpload = async (file: File): Promise<void> => {
-    // This is just for the progress display
-    // The actual upload happens when user clicks "Upload and Process" button
-    // So we'll just simulate success here
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`File ${file.name} ready for processing`);
-        resolve();
-      }, 500);
+  // Excel file upload simulation
+  const simulateExcelUpload = useCallback(async (file: File) => {
+    const id = `${file.name}-${Date.now()}`;
+    
+    // Add file to upload items with initial progress
+    const newItem: ExcelUploadItem = {
+      id,
+      file,
+      progress: 0,
+      status: 'uploading'
+    };
+    
+    setExcelUploadItems(() => {
+      // Replace any existing file with new one (only one Excel file allowed)
+      return [newItem];
     });
-  };
+    setSelectedFile(file);
+
+    // Simulate upload progress
+    for (let progress = 0; progress <= 100; progress += 10) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      setExcelUploadItems(prev => 
+        prev.map(item => 
+          item.id === id ? { ...item, progress } : item
+        )
+      );
+    }
+
+    // Mark as completed
+    setExcelUploadItems(prev => 
+      prev.map(item => 
+        item.id === id ? { ...item, status: 'completed' } : item
+      )
+    );
+  }, []);
+
+  const onExcelDrop = useCallback(async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0) {
+      // Only take the first file for Excel upload
+      await simulateExcelUpload(acceptedFiles[0]);
+    }
+  }, [simulateExcelUpload]);
+
+  const removeExcelFile = useCallback((fileId: string, event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setExcelUploadItems([]);
+    setSelectedFile(null);
+  }, []);
+
+  const { getRootProps: getExcelRootProps, getInputProps: getExcelInputProps } = useDropzone({
+    onDrop: onExcelDrop,
+    accept: {
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls']
+    },
+    multiple: false,
+    onDragEnter: () => setIsDragActive(true),
+    onDragLeave: () => setIsDragActive(false),
+    onDropAccepted: () => setIsDragActive(false),
+    onDropRejected: () => setIsDragActive(false)
+  });
 
   const handleUpload = async () => {
     if (!selectedFile) return;
     try {
       setLoading(true);
       setError("");
+      
+      // Start processing modal immediately
+      startProcessing(
+        'Processing Excel File',
+        'Reading questions and validating format...'
+      );
+      
       const response: UploadResponse = await uploadExcel(selectedFile);
       localStorage.setItem("questions", JSON.stringify(response.questions));
       localStorage.setItem("metadata", JSON.stringify(response.metadata));
       localStorage.setItem("sessionId", response.session_id);
       localStorage.setItem("selectedTemplate", "default"); // Store excel template choice
       localStorage.setItem("selectedWordTemplate", selectedWordTemplate); // Store word template choice
+      
+      // Stop processing modal before navigation
+      stopProcessing();
+      
       router.push("/category");
     } catch (err) {
+      // Stop processing modal on error
+      stopProcessing();
+      
       setError(
         "Failed to upload file. Please make sure it follows the correct format."
       );
@@ -314,13 +400,11 @@ export default function HomePage() {
 
   return (
     <Box 
-      minHeight="100vh" 
-      maxHeight="100vh"
+      minHeight="100vh"
       sx={{ 
         bgcolor: "#e3e9f7", 
         color: "#222", 
-        position: "relative", 
-        overflow: "hidden" // Prevent page scrolling
+        position: "relative"
       }}
     >
       <Navbar />
@@ -329,17 +413,13 @@ export default function HomePage() {
         sx={{ 
           position: "relative", 
           zIndex: 1, 
-          px: 6,
-          height: "calc(100vh - 64px)", // Adjust for navbar height
-          overflow: "hidden" // Prevent ALL scrolling - both page and internal
+          px: 6
         }}
       >
         <Container 
           maxWidth="xl" 
           sx={{ 
-            px: 2,
-            height: "100%",
-            overflow: "hidden" // Prevent container from scrolling
+            px: 2
           }}
         >
           {error && (
@@ -351,8 +431,7 @@ export default function HomePage() {
             container 
             spacing={2} 
             sx={{ 
-              height: '100%',
-              overflow: 'hidden' // Prevent all overflow
+              minHeight: '100%'
             }}
           >
             {/* Left Half - Excel Upload Section */}
@@ -361,8 +440,6 @@ export default function HomePage() {
               xs={12} 
               md={6}
               sx={{
-                height: '100%',
-                overflow: 'hidden', // No scrollbars
                 display: 'flex',
                 flexDirection: 'column',
                 pr: 2 // Add padding-right to create gap from divider
@@ -414,13 +491,135 @@ export default function HomePage() {
                 </ul>
               </Box>
 
-              {/* File Upload */}
+              {/* Excel File Upload */}
               <Box mb={2}>
-                <FileUpload 
-                  onFileSelect={setSelectedFile} 
-                  onFileUpload={handleFileUpload}
-                  showProgress={true}
-                />
+                <Paper
+                  {...getExcelRootProps()}
+                  sx={{
+                    bgcolor: excelUploadItems.length > 0 ? '#f8fafc' : 
+                             isDragActive ? '#dcfce7' : '#eff6ff',
+                    border: excelUploadItems.length > 0 ? '2px solid #e2e8f0' :
+                            isDragActive ? '2px dashed #059669' : '2px dashed #059669',
+                    borderRadius: 3,
+                    p: 3,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderColor: isDragActive ? '#059669' : '#047857',
+                      backgroundColor: isDragActive ? '#dcfce7' : '#f0f9ff',
+                    },
+                    minHeight: excelUploadItems.length > 0 ? 'auto' : '160px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <input {...getExcelInputProps()} />
+                  
+                  {/* Empty State */}
+                  {excelUploadItems.length === 0 && (
+                    <Box sx={{ 
+                      textAlign: 'center',
+                      flex: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}>
+                      <CloudUploadIcon sx={{ fontSize: 48, mb: 2, color: isDragActive ? '#059669' : '#059669' }} />
+                      {isDragActive ? (
+                        <Typography variant="h6" sx={{ color: '#059669', fontWeight: 600 }}>
+                          Drop your Excel file here...
+                        </Typography>
+                      ) : (
+                        <Box>
+                          <Typography variant="h6" sx={{ color: "#1a1a1a", fontWeight: 600, mb: 1 }}>
+                            Upload Excel File
+                          </Typography>
+                          <Typography variant="body1" sx={{ mb: 1, color: "#666", fontWeight: 500 }}>
+                            Drag and drop your Excel file here
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: "#888" }}>
+                            or click to browse your files
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: "#888", mt: 1 }}>
+                            (Only .xlsx and .xls files are accepted)
+                          </Typography>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* Uploaded File */}
+                  {excelUploadItems.length > 0 && (
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ mb: 2, color: '#1a1a1a', fontWeight: 600, textAlign: 'center' }}>
+                        Excel File Ready
+                      </Typography>
+                      {excelUploadItems.map((item) => (
+                        <Card
+                          key={item.id}
+                          sx={{
+                            bgcolor: 'rgba(255,255,255,0.9)',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 2,
+                          }}
+                        >
+                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                <DescriptionIcon sx={{ color: '#059669', mr: 2, fontSize: 32 }} />
+                                <Box sx={{ flex: 1 }}>
+                                  <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1a1a1a', mb: 0.5 }}>
+                                    {item.file.name}
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ color: '#666' }}>
+                                    {(item.file.size / (1024 * 1024)).toFixed(2)} MB
+                                  </Typography>
+                                  
+                                  {item.status === 'uploading' && (
+                                    <Box sx={{ mt: 1 }}>
+                                      <LinearProgress 
+                                        variant="determinate" 
+                                        value={item.progress} 
+                                        sx={{ 
+                                          height: 6, 
+                                          borderRadius: 3,
+                                          bgcolor: '#e5e7eb',
+                                          '& .MuiLinearProgress-bar': {
+                                            bgcolor: '#059669'
+                                          }
+                                        }}
+                                      />
+                                      <Typography variant="caption" sx={{ color: '#666', mt: 0.5 }}>
+                                        {item.progress}% uploaded
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                  
+                                  {item.status === 'completed' && (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                      <CheckCircleIcon sx={{ color: '#16a34a', fontSize: 16, mr: 0.5 }} />
+                                      <Typography variant="caption" sx={{ color: '#16a34a' }}>
+                                        Upload completed
+                                      </Typography>
+                                    </Box>
+                                  )}
+                                </Box>
+                              </Box>
+                              
+                              <IconButton 
+                                onClick={(event) => removeExcelFile(item.id, event)}
+                                sx={{ color: '#ef4444' }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </Box>
+                  )}
+                </Paper>
               </Box>
 
               {/* Upload Button */}
@@ -462,8 +661,6 @@ export default function HomePage() {
               xs={12} 
               md={6}
               sx={{
-                height: '100%',
-                overflow: 'hidden', // No scrollbars
                 display: 'flex',
                 flexDirection: 'column'
               }}
@@ -727,6 +924,13 @@ export default function HomePage() {
           </Grid>
         </Container>
       </Box>
+      
+      {/* Processing Modal */}
+      <ProcessingModal 
+        isVisible={processingState.isProcessing}
+        title={processingState.title}
+        subtitle={processingState.subtitle}
+      />
     </Box>
   );
 }

@@ -1,0 +1,67 @@
+{
+  "questions": [
+    "1. What is the worst fruit ever? a. Grapes                \t\t\t\tb. Apple c. Durian                \t\t\t\td. Mango e. Starfish",
+    "2. Which of these is typically eaten as a dessert? a. Rice                \t\t\t\tb. Chicken c. Cake                \t\t\t\td. Carrot e. Lettuce",
+    "3. Which of the following is a beverage? a. Bread                \t\t\t\tb. Juice c. Steak                \t\t\t\td. Pasta e. Soup",
+    "4. Which of the following is a fruit? a. Porksssssssssss b. Beefsssssss c. Basilsssssss d. Applesssssss e. None of the Abovesss",
+    "5. Which is a type of pasta? a. Spaghetti                \t\t\t\tb. Burger c. Fried Ric                \t\t\t\td. Toast e. Ice cream *** End of Exam Question ***"
+  ],
+  "questions_by_type": {
+    "mcq": [
+      {
+        "number": "1",
+        "content": "1. What is the worst fruit ever? a. Grapes                \t\t\t\tb. Apple c. Durian                \t\t\t\td. Mango e. Starfish",
+        "type": "mcq"
+      },
+      {
+        "number": "2",
+        "content": "2. Which of these is typically eaten as a dessert? a. Rice                \t\t\t\tb. Chicken c. Cake                \t\t\t\td. Carrot e. Lettuce",
+        "type": "mcq"
+      },
+      {
+        "number": "3",
+        "content": "3. Which of the following is a beverage? a. Bread                \t\t\t\tb. Juice c. Steak                \t\t\t\td. Pasta e. Soup",
+        "type": "mcq"
+      },
+      {
+        "number": "4",
+        "content": "4. Which of the following is a fruit? a. Porksssssssssss b. Beefsssssss c. Basilsssssss d. Applesssssss e. None of the Abovesss",
+        "type": "mcq"
+      },
+      {
+        "number": "5",
+        "content": "5. Which is a type of pasta? a. Spaghetti                \t\t\t\tb. Burger c. Fried Ric                \t\t\t\td. Toast e. Ice cream *** End of Exam Question ***",
+        "type": "mcq"
+      }
+    ],
+    "true_false": [],
+    "matching": [],
+    "short_answer": [],
+    "essay": [],
+    "fill_blank": [],
+    "other": []
+  },
+  "mcq_options": [
+    "a. Grapes                \t\t\t\tb. Apple",
+    "c. Durian                \t\t\t\td. Mango",
+    "e. Starfish",
+    "a. Rice                \t\t\t\tb. Chicken",
+    "c. Cake                \t\t\t\td. Carrot",
+    "e. Lettuce",
+    "a. Bread                \t\t\t\tb. Juice",
+    "c. Steak                \t\t\t\td. Pasta",
+    "e. Soup",
+    "a. Porksssssssssss",
+    "b. Beefsssssss",
+    "c. Basilsssssss",
+    "d. Applesssssss",
+    "e. None of the Abovesss",
+    "a. Spaghetti                \t\t\t\tb. Burger",
+    "c. Fried Ric                \t\t\t\td. Toast",
+    "e. Ice cream"
+  ],
+  "matching_pairs": [],
+  "true_false_statements": [],
+  "total_questions": 5,
+  "extraction_time": "2025-09-10T07:27:01.063105"
+}
