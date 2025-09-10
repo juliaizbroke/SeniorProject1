@@ -7,6 +7,7 @@ import os
 import uuid
 import threading
 import time
+import json
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -14,6 +15,7 @@ load_dotenv()
 
 from processing.parser import parse_excel
 from processing.formatter import generate_word_files
+from processing.similarity_analyzer import DocumentSimilarityAnalyzer
 
 try:
     import mammoth
@@ -28,6 +30,24 @@ UPLOAD_FOLDER = "output"
 WORD_TEMPLATES_FOLDER = "processing/templates/paper"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(WORD_TEMPLATES_FOLDER, exist_ok=True)
+
+# Initialize similarity analyzer
+similarity_analyzer = DocumentSimilarityAnalyzer()
+
+# Schedule automatic cleanup of old sessions
+import threading
+import time
+def cleanup_old_sessions_periodically():
+    while True:
+        try:
+            time.sleep(3600)  # Run every hour
+            similarity_analyzer.cleanup_old_sessions(2)  # Clean sessions older than 2 hours
+        except Exception as e:
+            print(f"Error in periodic cleanup: {str(e)}")
+
+# Start cleanup thread
+cleanup_thread = threading.Thread(target=cleanup_old_sessions_periodically, daemon=True)
+cleanup_thread.start()
 
 # File cleanup configuration
 FILE_EXPIRY_MINUTES = int(os.environ.get('FILE_EXPIRY_MINUTES', 30))  # Default 30 minutes
@@ -663,6 +683,180 @@ def download_default_word_template():
     except Exception as e:
         print(f"Error downloading default word template: {str(e)}")
         return jsonify({"error": f"Failed to download template: {str(e)}"}), 500
+
+# ===== SIMILARITY CHECKING API ROUTES =====
+
+@app.route('/api/similarity/create-session', methods=['POST'])
+def create_similarity_session():
+    """Create a new similarity analysis session"""
+    try:
+        session_id = similarity_analyzer.create_session()
+        return jsonify({
+            "success": True,
+            "session_id": session_id,
+            "message": "Session created successfully"
+        }), 200
+    except Exception as e:
+        print(f"Error creating similarity session: {str(e)}")
+        return jsonify({"error": f"Failed to create session: {str(e)}"}), 500
+
+@app.route('/api/similarity/upload/<session_id>', methods=['POST'])
+def upload_similarity_files(session_id):
+    """Upload Word documents for similarity analysis"""
+    try:
+        if 'files' not in request.files:
+            return jsonify({"error": "No files provided"}), 400
+        
+        files = request.files.getlist('files')
+        
+        if len(files) < 2:
+            return jsonify({"error": "At least 2 files required for comparison"}), 400
+        
+        session_path = os.path.join(similarity_analyzer.temp_base_dir, session_id)
+        if not os.path.exists(session_path):
+            return jsonify({"error": "Session not found"}), 404
+        
+        uploaded_files_path = os.path.join(session_path, "uploaded_files")
+        uploaded_files = []
+        
+        for file in files:
+            if file.filename and file.filename.endswith('.docx'):
+                filename = secure_filename(file.filename)
+                # Ensure unique filename
+                if filename in [f["name"] for f in uploaded_files]:
+                    name, ext = os.path.splitext(filename)
+                    filename = f"{name}_{int(time.time())}{ext}"
+                
+                file_path = os.path.join(uploaded_files_path, filename)
+                file.save(file_path)
+                
+                uploaded_files.append({
+                    "name": filename,
+                    "original_name": file.filename,
+                    "size": os.path.getsize(file_path),
+                    "upload_time": time.time()
+                })
+        
+        if len(uploaded_files) < 2:
+            return jsonify({"error": "At least 2 valid .docx files required"}), 400
+        
+        # Update session info
+        session_info_path = os.path.join(session_path, "session_info.json")
+        with open(session_info_path, 'r') as f:
+            session_info = json.load(f)
+        
+        session_info["files_uploaded"] = uploaded_files
+        
+        with open(session_info_path, 'w') as f:
+            json.dump(session_info, f, indent=2)
+        
+        return jsonify({
+            "success": True,
+            "files_uploaded": len(uploaded_files),
+            "files": uploaded_files,
+            "message": f"Successfully uploaded {len(uploaded_files)} files"
+        }), 200
+        
+    except Exception as e:
+        print(f"Error uploading similarity files: {str(e)}")
+        return jsonify({"error": f"Failed to upload files: {str(e)}"}), 500
+
+@app.route('/api/similarity/analyze/<session_id>', methods=['POST'])
+def analyze_similarity(session_id):
+    """Analyze similarity between uploaded documents"""
+    try:
+        results = similarity_analyzer.analyze_session(session_id)
+        return jsonify({
+            "success": True,
+            "results": results,
+            "message": "Analysis completed successfully"
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        print(f"Error analyzing similarity: {str(e)}")
+        return jsonify({"error": f"Analysis failed: {str(e)}"}), 500
+
+@app.route('/api/similarity/results/<session_id>', methods=['GET'])
+def get_similarity_results(session_id):
+    """Get similarity analysis results"""
+    try:
+        results = similarity_analyzer.get_session_results(session_id)
+        return jsonify({
+            "success": True,
+            "results": results
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        print(f"Error getting similarity results: {str(e)}")
+        return jsonify({"error": f"Failed to get results: {str(e)}"}), 500
+
+@app.route('/api/similarity/cleanup/<session_id>', methods=['DELETE'])
+def cleanup_similarity_session(session_id):
+    """Clean up a specific similarity session"""
+    try:
+        success = similarity_analyzer.cleanup_session(session_id)
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Session cleaned up successfully"
+            }), 200
+        else:
+            return jsonify({"error": "Session not found or cleanup failed"}), 404
+            
+    except Exception as e:
+        print(f"Error cleaning up session: {str(e)}")
+        return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+
+@app.route('/api/similarity/cleanup-all', methods=['DELETE'])
+def cleanup_all_similarity_sessions():
+    """Clean up all old similarity sessions"""
+    try:
+        max_age_hours = request.args.get('max_age_hours', 2, type=int)
+        cleaned_count = similarity_analyzer.cleanup_old_sessions(max_age_hours)
+        return jsonify({
+            "success": True,
+            "cleaned_sessions": cleaned_count,
+            "message": f"Cleaned up {cleaned_count} old sessions"
+        }), 200
+        
+    except Exception as e:
+        print(f"Error cleaning up all sessions: {str(e)}")
+        return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+
+@app.route('/api/similarity/status', methods=['GET'])
+def similarity_system_status():
+    """Get similarity system status"""
+    try:
+        temp_dir = similarity_analyzer.temp_base_dir
+        active_sessions = 0
+        total_size = 0
+        
+        if os.path.exists(temp_dir):
+            for session_folder in os.listdir(temp_dir):
+                if session_folder.startswith("similarity_"):
+                    active_sessions += 1
+                    session_path = os.path.join(temp_dir, session_folder)
+                    for root, dirs, files in os.walk(session_path):
+                        for file in files:
+                            total_size += os.path.getsize(os.path.join(root, file))
+        
+        return jsonify({
+            "success": True,
+            "status": {
+                "active_sessions": active_sessions,
+                "total_size_mb": round(total_size / (1024 * 1024), 2),
+                "temp_directory": temp_dir,
+                "threshold": similarity_analyzer.similarity_threshold
+            }
+        }), 200
+        
+    except Exception as e:
+        print(f"Error getting similarity status: {str(e)}")
+        return jsonify({"error": f"Status check failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
