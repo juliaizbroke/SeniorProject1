@@ -6,6 +6,7 @@ import datetime
 import os
 from .duplicate_detector import QuestionDuplicateDetector, annotate_duplicates_in_questions
 import logging
+import language_tool_python
 
 def format_date(date_str):
     try:
@@ -27,6 +28,25 @@ def format_time(time_str):
     except:
         return time_str
 
+def check_grammar(text, tool):
+    """
+    Check grammar of a text using language_tool_python.
+    Returns a list of error messages (not fixed).
+    """
+    if not text or not isinstance(text, str):
+        return []
+    matches = tool.check(text)
+    errors = []
+    for match in matches:
+        errors.append({
+            "message": match.message,
+            "offset": match.offset,
+            "length": match.errorLength,
+            "context": match.context,
+            "ruleId": match.ruleId
+        })
+    return errors
+
 def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
     """
     Parse Excel file and extract questions with optional duplicate detection.
@@ -37,6 +57,7 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
         similarity_threshold: Threshold for similarity detection (0.0-1.0)
     """
     xls = pd.ExcelFile(file)
+    tool = language_tool_python.LanguageTool('en-US')
 
     # ---- Extract Metadata from 'Info' ----
     info_sheet = xls.parse("Info", header=None)
@@ -90,19 +111,17 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
 
     # Multiple Choice
     df_mc = xls.parse("MultipleChoice")
-    for i, row in enumerate(df_mc.itertuples(index=False), 2):  # DataFrame is 0-based, Excel is 1-based, skip header
-        # Check if any option has length >= 20
+    for i, row in enumerate(df_mc.itertuples(index=False), 2):
         options = [str(getattr(row, opt, "")) for opt in ['a', 'b', 'c', 'd', 'e']]
         is_long = any(len(opt) >= 20 for opt in options)
-        
-        # Extract image description if present
         image_description = ""
         if hasattr(row, 'image') and row.image:
             image_description = str(row.image).strip()
-        
+        question_text = getattr(row, "question", "")
+        grammar_errors = check_grammar(question_text, tool)
         all_questions.append({
             "type": "multiple choice",
-            "question": getattr(row, "question", ""),
+            "question": question_text,
             "a": getattr(row, "a", ""),
             "b": getattr(row, "b", ""),
             "c": getattr(row, "c", ""),
@@ -111,70 +130,76 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
             "answer": getattr(row, "ans", ""),
             "category": getattr(row, "category", ""),
             "image_description": image_description,
-            "is_long": is_long
+            "is_long": is_long,
+            "grammar_errors": grammar_errors
         })
 
     # True/False
     df_tf = xls.parse("TrueFalse")
     for _, row in df_tf.iterrows():
-        # Extract image description if present
         image_description = ""
         if 'image' in row and row['image'] and pd.notna(row['image']):
             image_description = str(row['image']).strip()
-            
+        question_text = row.get("question", "")
+        grammar_errors = check_grammar(question_text, tool)
         all_questions.append({
             "type": "true/false",
-            "question": row.get("question", ""),
+            "question": question_text,
             "answer": row.get("ans", ""),
             "category": row.get("category", ""),
-            "image_description": image_description
+            "image_description": image_description,
+            "grammar_errors": grammar_errors
         })
 
     # Matching
     df_match = xls.parse("Matching")
     for _, row in df_match.iterrows():
-        # Extract image description if present
         image_description = ""
         if 'image' in row and row['image'] and pd.notna(row['image']):
             image_description = str(row['image']).strip()
-            
+        question_text = row.get("question", "")
+        grammar_errors = check_grammar(question_text, tool)
         all_questions.append({
             "type": "matching",
-            "question": row.get("question", ""),
+            "question": question_text,
             "answer": row.get("ans", ""),
             "category": row.get("category", ""),
-            "image_description": image_description
+            "image_description": image_description,
+            "grammar_errors": grammar_errors
         })
 
     # Fake Answers (for matching questions distractors)
     try:
         df_fake = xls.parse("FakeAnswers")
         for _, row in df_fake.iterrows():
+            question_text = row.get("question", "")
+            grammar_errors = check_grammar(question_text, tool)
             all_questions.append({
                 "type": "fake answer",
-                "question": row.get("question", ""),
+                "question": question_text,
                 "answer": row.get("ans", ""),
-                "category": row.get("category", "")
+                "category": row.get("category", ""),
+                "grammar_errors": grammar_errors
             })
     except Exception:
-        # If FakeAnswers sheet doesn't exist, skip it
         pass
 
     # Written Question
     df_written = xls.parse("WrittenQuestion")
     for _, row in df_written.iterrows():
-        # Extract image description if present
         image_description = ""
         if 'image' in row and row['image'] and pd.notna(row['image']):
             image_description = str(row['image']).strip()
-            
+        question_text = row.get("question", "")
+        grammar_errors = check_grammar(question_text, tool)
         all_questions.append({
             "type": "written question",
-            "question": row.get("question", ""),
+            "question": question_text,
             "answer": row.get("ans", ""),
             "q_type": row.get("q_type", ""),
             "category": row.get("category", ""),
-            "image_description": image_description
+            "image_description": image_description,
+            "grammar_errors": grammar_errors
         })
 
     # ---- Apply Duplicate Detection ----

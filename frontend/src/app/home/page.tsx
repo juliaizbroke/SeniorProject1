@@ -49,7 +49,7 @@ export default function HomePage() {
 
   const loadWordTemplates = async () => {
     try {
-      const response = await fetch('http://localhost:5000/word-templates');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/word-templates`);
       if (response.ok) {
         const data = await response.json();
         console.log('Loaded word templates:', data); // Debug log
@@ -121,7 +121,7 @@ export default function HomePage() {
 
   const downloadTemplate = async () => {
     try {
-      const response = await fetch('http://localhost:5000/download-template');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-template`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -143,7 +143,7 @@ export default function HomePage() {
 
   const downloadWordTemplate = async () => {
     try {
-      const response = await fetch('http://localhost:5000/download-word-template');
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-word-template`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -182,7 +182,7 @@ export default function HomePage() {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch('http://localhost:5000/upload-word-template', {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload-word-template`, {
         method: 'POST',
         body: formData,
       });
@@ -258,7 +258,7 @@ export default function HomePage() {
 
   const makeWordTemplateDefault = async (templateId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/word-templates/${templateId}/make-default`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/word-templates/${templateId}/make-default`, {
         method: 'POST',
       });
       if (response.ok) {
@@ -291,7 +291,7 @@ export default function HomePage() {
     
     if (confirm(confirmMessage)) {
       try {
-        const response = await fetch(`http://localhost:5000/word-templates/${templateId}`, {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/word-templates/${templateId}`, {
           method: 'DELETE',
         });
         if (response.ok) {
