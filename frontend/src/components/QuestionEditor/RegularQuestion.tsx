@@ -18,6 +18,8 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import LockIcon from '@mui/icons-material/Lock';
@@ -156,7 +158,7 @@ export default function RegularQuestion({
 
       console.log('Sending request to upload endpoint...');
 
-      const response = await fetch('http://localhost:5000/upload-question-image', {
+      const response = await fetch(`${API_BASE_URL}/upload-question-image`, {
         method: 'POST',
         body: formData,
       });
@@ -173,7 +175,7 @@ export default function RegularQuestion({
       console.log('✅ Image upload successful:', result.filename);
       
       // Update local state immediately for instant display
-      const imageUrl = `http://localhost:5000/images/${result.filename}`;
+      const imageUrl = `${API_BASE_URL}/images/${result.filename}`;
       setLocalImageData({
         has_uploaded_image: true,
         uploaded_image_filename: result.filename,

@@ -40,6 +40,8 @@ import {
 } from '@mui/icons-material';
 import Navbar from '../../components/Navbar';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 interface UploadedFile {
   id: string;
   file: File;
@@ -88,19 +90,25 @@ export default function SimilarityPage() {
 
   // Create session on component mount
   useEffect(() => {
-    createSession();
+    let currentSessionId: string | null = null;
+    
+    const initSession = async () => {
+      currentSessionId = await createSession();
+    };
+    
+    initSession();
     
     // Cleanup on unmount
     return () => {
-      if (sessionId) {
-        cleanupSession(sessionId);
+      if (currentSessionId) {
+        cleanupSession(currentSessionId);
       }
     };
-  }, [sessionId]);
+  }, []); // Empty dependency array to run only once
 
   const createSession = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/similarity/create-session', {
+      const response = await fetch(`${API_BASE_URL}/api/similarity/create-session`, {
         method: 'POST'
       });
       
@@ -121,7 +129,7 @@ export default function SimilarityPage() {
 
   const cleanupSession = async (id: string) => {
     try {
-      await fetch(`http://localhost:5000/api/similarity/cleanup/${id}`, {
+      await fetch(`${API_BASE_URL}/api/similarity/cleanup/${id}`, {
         method: 'DELETE'
       });
     } catch (error) {
@@ -202,13 +210,17 @@ export default function SimilarityPage() {
 
     let currentSessionId = sessionId;
     if (!currentSessionId) {
+      console.log('No session ID found, creating new session...');
       setError('No active session. Creating new session...');
       currentSessionId = await createSession();
       if (!currentSessionId) {
         setError('Failed to create session. Please refresh the page.');
+        setIsAnalyzing(false);
         return;
       }
     }
+    
+    console.log('Using session ID for analysis:', currentSessionId);
 
     try {
       setIsAnalyzing(true);
@@ -223,15 +235,24 @@ export default function SimilarityPage() {
         formData.append('files', item.file);
       });
 
-      const uploadResponse = await fetch(`http://localhost:5000/api/similarity/upload/${currentSessionId}`, {
+      console.log('Uploading files to session:', currentSessionId);
+      const uploadResponse = await fetch(`${API_BASE_URL}/api/similarity/upload/${currentSessionId}`, {
         method: 'POST',
         body: formData
       });
 
       if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json();
-        throw new Error(errorData.error || 'Upload failed');
+        const errorText = await uploadResponse.text();
+        console.error('Upload failed:', uploadResponse.status, errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error || 'Upload failed');
+        } catch {
+          throw new Error(`Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`);
+        }
       }
+      
+      console.log('Files uploaded successfully');
 
       // Step 2: Analyze
       setAnalysisStep('Extracting questions from documents...');
@@ -242,19 +263,28 @@ export default function SimilarityPage() {
 
       setAnalysisStep('Performing semantic analysis...');
       
-      const analyzeResponse = await fetch(`http://localhost:5000/api/similarity/analyze/${currentSessionId}`, {
+      console.log('Starting analysis for session:', currentSessionId);
+      const analyzeResponse = await fetch(`${API_BASE_URL}/api/similarity/analyze/${currentSessionId}`, {
         method: 'POST'
       });
 
       if (!analyzeResponse.ok) {
-        const errorData = await analyzeResponse.json();
-        throw new Error(errorData.error || 'Analysis failed');
+        const errorText = await analyzeResponse.text();
+        console.error('Analysis failed:', analyzeResponse.status, errorText);
+        try {
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.error || 'Analysis failed');
+        } catch {
+          throw new Error(`Analysis failed: ${analyzeResponse.status} ${analyzeResponse.statusText}`);
+        }
       }
+      
+      console.log('Analysis completed successfully');
 
       // Step 3: Get results
       setAnalysisStep('Generating similarity matrix...');
       
-      const resultsResponse = await fetch(`http://localhost:5000/api/similarity/results/${currentSessionId}`);
+      const resultsResponse = await fetch(`${API_BASE_URL}/api/similarity/results/${currentSessionId}`);
       
       if (!resultsResponse.ok) {
         const errorData = await resultsResponse.json();
@@ -318,7 +348,7 @@ export default function SimilarityPage() {
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ fontWeight: 500, backgroundColor: '#f9f9f9' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                       Documents
                     </Typography>
                   </TableCell>
