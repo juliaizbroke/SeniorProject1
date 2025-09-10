@@ -100,7 +100,7 @@ export default function SimilarityPage() {
 
   const createSession = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/similarity/create-session', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/similarity/create-session`, {
         method: 'POST'
       });
       

@@ -25,7 +25,11 @@ except ImportError:
     print("Warning: mammoth not available. HTML preview will be disabled.")
 
 app = Flask(__name__)
-CORS(app)
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://senior-project1.vercel.app"
+]
+CORS(app, origins=ALLOWED_ORIGINS)
 UPLOAD_FOLDER = "output"
 WORD_TEMPLATES_FOLDER = "processing/templates/paper"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -859,5 +863,5 @@ def similarity_system_status():
         return jsonify({"error": f"Status check failed: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5001))
     app.run(host="0.0.0.0", port=port, debug=True)
