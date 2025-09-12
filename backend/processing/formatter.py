@@ -123,7 +123,7 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         if q.get("uploaded_image_filename") and q.get("uploaded_image_filename") != "None":
             image_filename = q.get("uploaded_image_filename")
         elif q.get("uploaded_image_url"):
-            # Extract filename from URL like "http://localhost:5000/images/filename.jpg"
+            # Extract filename from URL like "http://localhost:5001/images/filename.jpg"
             import re
             url_match = re.search(r'/images/([^/?]+)', q.get("uploaded_image_url"))
             if url_match:
@@ -566,14 +566,22 @@ def generate_word_files(questions, metadata, session_id, selected_template="defa
         exam_tpl.save(exam_path)
         print(f"[DEBUG] Exam file saved successfully: {exam_path}")
     except Exception as e:
-        print(f"[ERROR] Failed to render exam template: {e}")
+        print(f"[ERROR] Failed to render exam template: {str(e)}")
+        print(f"[ERROR] Exception type: {type(e).__name__}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
         # Try with the default template as fallback
         print(f"[DEBUG] Falling back to default template")
-        default_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
-        exam_tpl = DocxTemplate(default_template_path)
-        exam_tpl.render(context)
-        exam_tpl.save(exam_path)
-        print(f"[DEBUG] Exam file saved with default template: {exam_path}")
+        try:
+            default_template_path = os.path.join(TEMPLATE_DIR, "paper", "exam-paper-tpl_clean.docx")
+            exam_tpl = DocxTemplate(default_template_path)
+            exam_tpl.render(context)
+            exam_tpl.save(exam_path)
+            print(f"[DEBUG] Exam file saved with default template: {exam_path}")
+        except Exception as fallback_e:
+            print(f"[ERROR] Even fallback template failed: {str(fallback_e)}")
+            print(f"[ERROR] Fallback traceback: {traceback.format_exc()}")
+            raise fallback_e
 
     answer_tpl.render(context)
     answer_tpl.save(key_path)

@@ -156,7 +156,7 @@ export default function RegularQuestion({
 
       console.log('Sending request to upload endpoint...');
 
-      const response = await fetch('http://localhost:5000/upload-question-image', {
+      const response = await fetch('http://localhost:5001/upload-question-image', {
         method: 'POST',
         body: formData,
       });
@@ -173,7 +173,7 @@ export default function RegularQuestion({
       console.log('✅ Image upload successful:', result.filename);
       
       // Update local state immediately for instant display
-      const imageUrl = `http://localhost:5000/images/${result.filename}`;
+      const imageUrl = `http://localhost:5001/images/${result.filename}`;
       setLocalImageData({
         has_uploaded_image: true,
         uploaded_image_filename: result.filename,

@@ -464,6 +464,8 @@ def generate():
         return jsonify(response_data)
     except Exception as e:
         print(f"Error generating exam: {str(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Failed to generate exam: {str(e)}"}), 500
 
 @app.route("/download/<filename>")
