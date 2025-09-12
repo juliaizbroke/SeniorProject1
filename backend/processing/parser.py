@@ -5,6 +5,7 @@ from io import BytesIO
 import datetime
 import os
 from .duplicate_detector import QuestionDuplicateDetector, annotate_duplicates_in_questions
+from .grammar_checker import check_questions_grammar
 import logging
 
 def format_date(date_str):
@@ -27,14 +28,15 @@ def format_time(time_str):
     except:
         return time_str
 
-def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
+def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_grammar=True):
     """
-    Parse Excel file and extract questions with optional duplicate detection.
+    Parse Excel file and extract questions with optional duplicate detection and grammar checking.
     
     Args:
         file: Excel file object
         remove_duplicates: Whether to remove duplicate questions
         similarity_threshold: Threshold for similarity detection (0.0-1.0)
+        check_grammar: Whether to perform grammar checking on questions
     """
     xls = pd.ExcelFile(file)
 
@@ -214,6 +216,48 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8):
                 "enabled": False,
                 "error": str(e)
             }
+
+    # ---- Apply Grammar Checking ----
+    if all_questions and check_grammar:
+        try:
+            logging.info("Starting grammar check on all questions...")
+            all_questions, grammar_stats = check_questions_grammar(all_questions)
+            logging.info(f"Grammar check completed: {grammar_stats['questions_with_errors']}/{grammar_stats['total_questions']} questions have potential grammar errors")
+            metadata["grammar_check"] = {
+                "enabled": True,
+                "stats": grammar_stats
+            }
+        except Exception as e:
+            logging.error(f"Grammar checking failed: {str(e)}")
+            metadata["grammar_check"] = {
+                "enabled": False,
+                "error": str(e)
+            }
+            # Add default grammar check fields to questions if grammar check failed
+            for question in all_questions:
+                question['grammar_check'] = {
+                    'checked': False,
+                    'error': 'Grammar checker failed to initialize'
+                }
+                question['has_potential_grammar_error'] = False
+                question['has_grammar_issues'] = False
+                question['grammar_issue_count'] = 0
+                question['grammar_issues'] = []
+    else:
+        metadata["grammar_check"] = {
+            "enabled": False,
+            "reason": "Grammar checking disabled" if not check_grammar else "No questions to check"
+        }
+        # Add default grammar check fields to questions when grammar checking is disabled
+        for question in all_questions:
+            question['grammar_check'] = {
+                'checked': False,
+                'error': 'Grammar checking disabled'
+            }
+            question['has_potential_grammar_error'] = False
+            question['has_grammar_issues'] = False
+            question['grammar_issue_count'] = 0
+            question['grammar_issues'] = []
 
     metadata["selection_settings"] = {}  # Optional: add default/random if needed
     return all_questions, metadata
