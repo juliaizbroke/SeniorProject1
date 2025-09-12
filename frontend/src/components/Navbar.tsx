@@ -1,9 +1,8 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Box} from '@mui/material';
-import { useRouter } from 'next/navigation';
 
 const Navbar: React.FC = () => {
-  const router = useRouter();
+  // const router = useRouter(); // Using Link components instead
   //const pathname = usePathname();
 
   // const getActiveStep = () => {
@@ -48,7 +47,7 @@ const Navbar: React.FC = () => {
               alignItems: 'center', 
               cursor: 'pointer' 
             }}
-            onClick={() => router.push('/')}
+            onClick={() => window.location.href = '/'}
           >
             <Typography 
               variant="h5" 
