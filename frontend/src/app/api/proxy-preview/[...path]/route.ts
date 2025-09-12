@@ -12,7 +12,7 @@ export async function GET(
     const fullPath = path.join('/');
     
     // Construct the backend URL
-    const backendUrl = `http://127.0.0.1:5000/preview/${fullPath}`;
+    const backendUrl = `http://127.0.0.1:5001/preview/${fullPath}`;
     
     console.log('Proxying request to:', backendUrl);
     

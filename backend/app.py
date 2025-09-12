@@ -204,12 +204,15 @@ def upload():
         # Default now is to NOT remove duplicates; we only annotate unless explicitly requested.
         remove_duplicates = request.form.get('removeDuplicates', 'false').lower() == 'true'
         similarity_threshold = float(request.form.get('similarityThreshold', '0.8'))
+        
+        # Get grammar checking setting from form data (default is true)
+        check_grammar = request.form.get('checkGrammar', 'true').lower() == 'true'
 
         # Validate threshold
         if not 0.0 <= similarity_threshold <= 1.0:
             return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
         
-        questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold)
+        questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold, check_grammar=check_grammar)
         # If we removed duplicates, we still want annotation info on returned list for UI clarity.
         if remove_duplicates:
             try:
@@ -379,7 +382,9 @@ def analyze_duplicates():
             return jsonify({"error": "Invalid file format. Please upload an Excel file (.xlsx or .xls)"}), 400
         
         # Parse without removing duplicates first to get all questions
-        questions, metadata = parse_excel(file, remove_duplicates=False)
+        # Grammar checking is optional for similarity analysis to speed up processing
+        check_grammar = request.form.get('checkGrammar', 'false').lower() == 'true'
+        questions, metadata = parse_excel(file, remove_duplicates=False, check_grammar=check_grammar)
         
         # Get threshold from form data
         similarity_threshold = float(request.form.get('similarityThreshold', '0.8'))
@@ -464,6 +469,8 @@ def generate():
         return jsonify(response_data)
     except Exception as e:
         print(f"Error generating exam: {str(e)}")
+        import traceback
+        print(f"Full traceback: {traceback.format_exc()}")
         return jsonify({"error": f"Failed to generate exam: {str(e)}"}), 500
 
 @app.route("/download/<filename>")

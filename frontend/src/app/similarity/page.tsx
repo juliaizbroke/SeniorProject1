@@ -121,7 +121,7 @@ export default function SimilarityPage() {
 
   const cleanupSession = async (id: string) => {
     try {
-      await fetch(`http://localhost:5000/api/similarity/cleanup/${id}`, {
+      await fetch(`http://localhost:5001/api/similarity/cleanup/${id}`, {
         method: 'DELETE'
       });
     } catch (error) {
@@ -223,7 +223,7 @@ export default function SimilarityPage() {
         formData.append('files', item.file);
       });
 
-      const uploadResponse = await fetch(`http://localhost:5000/api/similarity/upload/${currentSessionId}`, {
+      const uploadResponse = await fetch(`http://localhost:5001/api/similarity/upload/${currentSessionId}`, {
         method: 'POST',
         body: formData
       });
@@ -242,7 +242,7 @@ export default function SimilarityPage() {
 
       setAnalysisStep('Performing semantic analysis...');
       
-      const analyzeResponse = await fetch(`http://localhost:5000/api/similarity/analyze/${currentSessionId}`, {
+      const analyzeResponse = await fetch(`http://localhost:5001/api/similarity/analyze/${currentSessionId}`, {
         method: 'POST'
       });
 
@@ -254,7 +254,7 @@ export default function SimilarityPage() {
       // Step 3: Get results
       setAnalysisStep('Generating similarity matrix...');
       
-      const resultsResponse = await fetch(`http://localhost:5000/api/similarity/results/${currentSessionId}`);
+      const resultsResponse = await fetch(`http://localhost:5001/api/similarity/results/${currentSessionId}`);
       
       if (!resultsResponse.ok) {
         const errorData = await resultsResponse.json();

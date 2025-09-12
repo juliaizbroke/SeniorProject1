@@ -222,7 +222,7 @@ class DocumentSimilarityAnalyzer:
         self.similarity_threshold = 0.7
         self.tfidf_vectorizer = TfidfVectorizer(
             stop_words='english',
-            max_features=5000,
+            max_features=5001,
             ngram_range=(1, 2),
             lowercase=True,
             strip_accents='unicode'
