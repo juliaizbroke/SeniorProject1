@@ -87,43 +87,70 @@ export default function SimilarityPage() {
   const [showResults, setShowResults] = useState(false);
   const [selectedComparison, setSelectedComparison] = useState<string | null>(null);
   const [analysisStep, setAnalysisStep] = useState<string>("");
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
 
-  // Create session on component mount
+  // Component cleanup on unmount
   useEffect(() => {
-    let currentSessionId: string | null = null;
-    
-    const initSession = async () => {
-      currentSessionId = await createSession();
-    };
-    
-    initSession();
-    
     // Cleanup on unmount
     return () => {
-      if (currentSessionId) {
-        cleanupSession(currentSessionId);
+      if (sessionId) {
+        cleanupSession(sessionId);
       }
     };
-  }, []); // Empty dependency array to run only once
+  }, [sessionId]); // Depend on sessionId so cleanup works when session changes
 
-  const createSession = async () => {
+  const createSession = async (): Promise<string | null> => {
+    if (isCreatingSession || sessionId) {
+      console.log('Session creation already in progress or session already exists, skipping...');
+      return sessionId || null;
+    }
+
     try {
+      setIsCreatingSession(true);
       const response = await fetch(`${API_BASE_URL}/api/similarity/create-session`, {
         method: 'POST'
       });
       
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+      
+      // Handle rate limiting (429) - wait and retry ONLY ONCE
+      if (response.status === 429 && data.wait_time) {
+        console.log(`Rate limited, waiting ${data.wait_time} seconds...`);
+        setError(`Creating session... (waiting ${data.wait_time.toFixed(1)}s)`);
+        
+        // Wait for the specified time and retry ONCE
+        await new Promise(resolve => setTimeout(resolve, (data.wait_time + 0.1) * 1000));
+        setError(''); // Clear the waiting message
+        
+        // Single retry - don't call createSession recursively
+        setIsCreatingSession(false); // Reset flag before retry
+        const retryResponse = await fetch(`${API_BASE_URL}/api/similarity/create-session`, {
+          method: 'POST'
+        });
+        const retryData = await retryResponse.json();
+        
+        if (retryResponse.ok && retryData.success) {
+          setSessionId(retryData.session_id);
+          return retryData.session_id;
+        } else {
+          setError('Failed to create session after retry');
+          return null;
+        }
+      }
+      
+      if (response.ok && data.success) {
         setSessionId(data.session_id);
         return data.session_id;
       } else {
-        setError('Failed to create analysis session');
+        setError(data.message || 'Failed to create analysis session');
         return null;
       }
     } catch (error) {
       console.error('Error creating session:', error);
       setError('Failed to connect to server');
       return null;
+    } finally {
+      setIsCreatingSession(false);
     }
   };
 
@@ -212,12 +239,13 @@ export default function SimilarityPage() {
     if (!currentSessionId) {
       console.log('No session ID found, creating new session...');
       setError('No active session. Creating new session...');
-      currentSessionId = await createSession();
-      if (!currentSessionId) {
+      const newSessionId = await createSession();
+      if (!newSessionId) {
         setError('Failed to create session. Please refresh the page.');
         setIsAnalyzing(false);
         return;
       }
+      currentSessionId = newSessionId;
     }
     
     console.log('Using session ID for analysis:', currentSessionId);
@@ -304,13 +332,15 @@ export default function SimilarityPage() {
     }
   };
 
-  const resetAnalysis = () => {
+  const resetAnalysis = async () => {
     setUploadedFiles([]);
     setAnalysisResults(null);
     setShowResults(false);
     setSelectedComparison(null);
     setError('');
-    createSession(); // Create new session
+    
+    // Clear the current session ID - let it be created when analysis starts
+    setSessionId('');
   };
 
   const renderSimilarityMatrix = () => {
@@ -447,7 +477,7 @@ export default function SimilarityPage() {
                             mb: 0.5
                           }}
                         >
-                          {score.toFixed(3)}
+                          {(score * 100).toFixed(1)}%
                         </Typography>
                         {rowIndex !== colIndex && (
                           <Typography 
@@ -468,29 +498,7 @@ export default function SimilarityPage() {
               </TableBody>
             </Table>
           </TableContainer>
-
-          <Box sx={{ mt: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Typography variant="caption" sx={{ color: '#666', fontWeight: 500 }}>
-              Similarity levels:
-            </Typography>
-            {[
-              { label: 'Low', color: '#4caf50' },
-              { label: 'Medium', color: '#ff9800' },
-              { label: 'High', color: '#f44336' }
-            ].map((item, index) => (
-              <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <Box sx={{
-                  width: 12,
-                  height: 12,
-                  backgroundColor: item.color,
-                  borderRadius: 1
-                }} />
-                <Typography variant="caption" sx={{ color: '#666' }}>
-                  {item.label}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
+          
         </CardContent>
       </Card>
     );
@@ -510,56 +518,329 @@ export default function SimilarityPage() {
           Detailed Comparison: {file1} vs {file2}
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mb: 3 }}>
-            <Grid item xs={6}>
-              <Paper sx={{ p: 2, textAlign: 'center' }}>
-                <Typography variant="h4" sx={{ color: getSimilarityColor(comparison.similarity_score) }}>
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Typography variant="h3" sx={{ color: getSimilarityColor(comparison.similarity_score), fontWeight: 'bold' }}>
                   {(comparison.similarity_score * 100).toFixed(1)}%
                 </Typography>
-                <Typography variant="body2">Overall Similarity</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 500, color: '#666' }}>Overall Similarity</Typography>
+                <Typography variant="caption" sx={{ 
+                  color: getSimilarityColor(comparison.similarity_score), 
+                  fontWeight: 'bold', 
+                  mt: 1, 
+                  textTransform: 'uppercase' 
+                }}>
+                  {getSimilarityLabel(comparison.similarity_score)} Risk
+                </Typography>
               </Paper>
             </Grid>
-            <Grid item xs={6}>
-              <Paper sx={{ p: 2 }}>
-                <Typography variant="body2"><strong>Method:</strong> {comparison.method_used}</Typography>
-                <Typography variant="body2"><strong>TF-IDF Score:</strong> {(comparison.tfidf_score * 100).toFixed(1)}%</Typography>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Typography variant="body1" sx={{ mb: 1 }}><strong>Analysis Method:</strong></Typography>
+                <Typography variant="body2" sx={{ color: '#666', mb: 2 }}>{comparison.method_used}</Typography>
+                
+                <Typography variant="body1" sx={{ mb: 1 }}><strong>TF-IDF Score:</strong></Typography>
+                <Typography variant="body2" sx={{ color: '#666', mb: 1 }}>{(comparison.tfidf_score * 100).toFixed(1)}%</Typography>
+                
                 {comparison.semantic_score && (
-                  <Typography variant="body2"><strong>Semantic Score:</strong> {(comparison.semantic_score * 100).toFixed(1)}%</Typography>
+                  <>
+                    <Typography variant="body1" sx={{ mb: 1 }}><strong>Semantic Score:</strong></Typography>
+                    <Typography variant="body2" sx={{ color: '#666', mb: 1 }}>{(comparison.semantic_score * 100).toFixed(1)}%</Typography>
+                  </>
                 )}
-                <Typography variant="body2"><strong>Processing Time:</strong> {comparison.processing_time}s</Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Typography variant="body1" sx={{ mb: 1 }}><strong>Processing Time:</strong></Typography>
+                <Typography variant="h4" sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+                  {comparison.processing_time}s
+                </Typography>
+                
+                <Typography variant="body1" sx={{ mb: 1, mt: 2 }}><strong>Questions Found:</strong></Typography>
+                <Typography variant="h5" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                  {comparison.matching_questions.length}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#666' }}>
+                  matching pairs detected
+                </Typography>
               </Paper>
             </Grid>
           </Grid>
 
+          {/* Risk Level Context */}
+          <Paper 
+            sx={{ 
+              p: 3, 
+              mt: 3, 
+              mb: 3, 
+              backgroundColor: comparison.similarity_score >= 0.75 ? '#ffebee' : 
+                              comparison.similarity_score >= 0.50 ? '#fff3e0' : '#e8f5e8',
+              border: `2px solid ${comparison.similarity_score >= 0.75 ? '#ffcdd2' : 
+                                  comparison.similarity_score >= 0.50 ? '#ffcc02' : '#c8e6c9'}`
+            }}
+          >
+            <Typography variant="h6" sx={{ 
+              fontWeight: 600, 
+              mb: 2,
+              color: comparison.similarity_score >= 0.75 ? '#d32f2f' : 
+                     comparison.similarity_score >= 0.50 ? '#f57c00' : '#2e7d32'
+            }}>
+              📋 Analysis Context
+            </Typography>
+            <Typography variant="body1" sx={{ 
+              color: comparison.similarity_score >= 0.75 ? '#d32f2f' : 
+                     comparison.similarity_score >= 0.50 ? '#f57c00' : '#2e7d32',
+              lineHeight: 1.6
+            }}>
+              {comparison.similarity_score >= 0.75 ? (
+                <>
+                  <strong>High Risk (≥75%):</strong> Documents contain <strong>mostly exact duplicates</strong> and/or multiple <strong>highly similar questions</strong>. 
+                  Users should review carefully — likely content overlap.
+                </>
+              ) : comparison.similarity_score >= 0.50 ? (
+                <>
+                  <strong>Medium Risk (50–74%):</strong> Documents have <strong>some exact duplicates</strong> but also a significant portion of <strong>partial matches</strong>. 
+                  Moderate similarity; some overlap, but portions may be acceptable.
+                </>
+              ) : (
+                <>
+                  <strong>Low Risk (&lt;50%):</strong> Few exact duplicates; most questions are <strong>unique</strong>. 
+                  Low chance of problematic overlap; mostly original content.
+                </>
+              )}
+            </Typography>
+          </Paper>
+
           {comparison.matching_questions.length > 0 && (
-            <Accordion>
-              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography>Matching Questions ({comparison.matching_questions.length})</Typography>
-              </AccordionSummary>
-              <AccordionDetails>
-                {comparison.matching_questions.map((match, index) => (
-                  <Paper key={index} sx={{ p: 2, mb: 2 }}>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12}>
-                        <Chip 
-                          label={`${(match.similarity * 100).toFixed(1)}% match`} 
-                          size="small" 
-                          sx={{ backgroundColor: getSimilarityColor(match.similarity) + '40' }}
-                        />
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="textSecondary">Question from {file1}:</Typography>
-                        <Typography variant="body2">{match.question1}</Typography>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="textSecondary">Question from {file2}:</Typography>
-                        <Typography variant="body2">{match.question2}</Typography>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                ))}
-              </AccordionDetails>
-            </Accordion>
+            <>
+              {/* Perfect Matches (100%) */}
+              {(() => {
+                const perfectMatches = comparison.matching_questions.filter(match => match.similarity >= 0.99);
+                const similarMatches = comparison.matching_questions.filter(match => match.similarity < 0.99 && match.similarity >= 0.7);
+                const otherMatches = comparison.matching_questions.filter(match => match.similarity < 0.7);
+
+                return (
+                  <>
+                    {perfectMatches.length > 0 && (
+                      <Accordion defaultExpanded>
+                        <AccordionSummary 
+                          expandIcon={<ExpandMoreIcon />}
+                          sx={{ backgroundColor: '#ffebee' }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#d32f2f' }}>
+                              🚨 Perfect Matches ({perfectMatches.length})
+                            </Typography>
+                            <Chip 
+                              label="High Risk" 
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: '#f44336', 
+                                color: 'white',
+                                fontWeight: 'bold'
+                              }} 
+                            />
+                          </Box>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Typography variant="body2" sx={{ mb: 3, color: '#d32f2f', fontWeight: 500 }}>
+                            These questions are identical or nearly identical between the two documents:
+                          </Typography>
+                          {perfectMatches.map((match, index) => (
+                            <Paper key={index} sx={{ p: 3, mb: 3, border: '2px solid #ffcdd2' }}>
+                              <Grid container spacing={3}>
+                                <Grid item xs={12}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                    <Chip 
+                                      label={`${(match.similarity * 100).toFixed(1)}% match`} 
+                                      size="medium" 
+                                      sx={{ 
+                                        backgroundColor: getSimilarityColor(match.similarity), 
+                                        color: 'white',
+                                        fontWeight: 'bold'
+                                      }}
+                                    />
+                                    <Typography variant="body2" sx={{ color: '#666' }}>
+                                      {match.question1_index} ↔ {match.question2_index}
+                                    </Typography>
+                                  </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#495057' }}>
+                                      📄 From {file1} ({match.question1_index}):
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>
+                                      {match.question1}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#495057' }}>
+                                      📄 From {file2} ({match.question2_index}):
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>
+                                      {match.question2}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                              </Grid>
+                            </Paper>
+                          ))}
+                        </AccordionDetails>
+                      </Accordion>
+                    )}
+
+                    {/* High Similarity Matches (70-99%) */}
+                    {similarMatches.length > 0 && (
+                      <Accordion sx={{ mt: 2 }}>
+                        <AccordionSummary 
+                          expandIcon={<ExpandMoreIcon />}
+                          sx={{ backgroundColor: '#fff3e0' }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#f57c00' }}>
+                              ⚠️ High Similarity Matches ({similarMatches.length})
+                            </Typography>
+                            <Chip 
+                              label="Medium Risk" 
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: '#ff9800', 
+                                color: 'white',
+                                fontWeight: 'bold'
+                              }} 
+                            />
+                          </Box>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Typography variant="body2" sx={{ mb: 3, color: '#f57c00', fontWeight: 500 }}>
+                            These questions have similar meaning or structure but are not identical:
+                          </Typography>
+                          {similarMatches.map((match, index) => (
+                            <Paper key={index} sx={{ p: 3, mb: 3, border: '2px solid #ffcc02' }}>
+                              <Grid container spacing={3}>
+                                <Grid item xs={12}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                    <Chip 
+                                      label={`${(match.similarity * 100).toFixed(1)}% match`} 
+                                      size="medium" 
+                                      sx={{ 
+                                        backgroundColor: getSimilarityColor(match.similarity), 
+                                        color: 'white',
+                                        fontWeight: 'bold'
+                                      }}
+                                    />
+                                    <Typography variant="body2" sx={{ color: '#666' }}>
+                                      {match.question1_index} ↔ {match.question2_index}
+                                    </Typography>
+                                  </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#495057' }}>
+                                      📄 From {file1} ({match.question1_index}):
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>
+                                      {match.question1}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#495057' }}>
+                                      📄 From {file2} ({match.question2_index}):
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>
+                                      {match.question2}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                              </Grid>
+                            </Paper>
+                          ))}
+                        </AccordionDetails>
+                      </Accordion>
+                    )}
+
+                    {/* Other Matches (Below 70%) */}
+                    {otherMatches.length > 0 && (
+                      <Accordion sx={{ mt: 2 }}>
+                        <AccordionSummary 
+                          expandIcon={<ExpandMoreIcon />}
+                          sx={{ backgroundColor: '#e8f5e8' }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 600, color: '#2e7d32' }}>
+                              ℹ️ Lower Similarity Matches ({otherMatches.length})
+                            </Typography>
+                            <Chip 
+                              label="Low Risk" 
+                              size="small" 
+                              sx={{ 
+                                backgroundColor: '#4caf50', 
+                                color: 'white',
+                                fontWeight: 'bold'
+                              }} 
+                            />
+                          </Box>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Typography variant="body2" sx={{ mb: 3, color: '#2e7d32', fontWeight: 500 }}>
+                            These questions show some similarity but are likely acceptable:
+                          </Typography>
+                          {otherMatches.map((match, index) => (
+                            <Paper key={index} sx={{ p: 3, mb: 3, border: '2px solid #c8e6c9' }}>
+                              <Grid container spacing={3}>
+                                <Grid item xs={12}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                                    <Chip 
+                                      label={`${(match.similarity * 100).toFixed(1)}% match`} 
+                                      size="medium" 
+                                      sx={{ 
+                                        backgroundColor: getSimilarityColor(match.similarity), 
+                                        color: 'white',
+                                        fontWeight: 'bold'
+                                      }}
+                                    />
+                                    <Typography variant="body2" sx={{ color: '#666' }}>
+                                      {match.question1_index} ↔ {match.question2_index}
+                                    </Typography>
+                                  </Box>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#495057' }}>
+                                      📄 From {file1} ({match.question1_index}):
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>
+                                      {match.question1}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                                <Grid item xs={12} md={6}>
+                                  <Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#495057' }}>
+                                      📄 From {file2} ({match.question2_index}):
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ mt: 1, lineHeight: 1.6 }}>
+                                      {match.question2}
+                                    </Typography>
+                                  </Paper>
+                                </Grid>
+                              </Grid>
+                            </Paper>
+                          ))}
+                        </AccordionDetails>
+                      </Accordion>
+                    )}
+                  </>
+                );
+              })()}
+            </>
           )}
         </DialogContent>
         <DialogActions>
@@ -580,8 +861,25 @@ export default function SimilarityPage() {
             </Typography>
             <Button
               variant="contained"
+              size="large"
               onClick={resetAnalysis}
-              sx={{ px: 3, py: 1 }}
+              sx={{
+                  bgcolor: "#1e3a8a",
+                  color: "#fff",
+                  fontWeight: 700,
+                  px: 3,
+                  py: 1,
+                  fontSize: "1.3rem",
+                  borderRadius: 3,
+                  textTransform: "none",
+                  boxShadow: "0 6px 24px rgba(30,58,138,0.3)",
+                  transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
+                  '&:hover': {
+                    bgcolor: "#12264a",
+                    transform: "translateY(-3px)",
+                    boxShadow: "0 12px 40px rgba(18,38,74,0.4)",
+                  },
+                }}
             >
               New Analysis
             </Button>
@@ -594,8 +892,90 @@ export default function SimilarityPage() {
             </Typography>
           </Alert>
 
-          {renderSimilarityMatrix()}
-          {renderComparisonDetails()}
+            {/* Risk Level Interpretation Table */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600, 
+                mb: 2, 
+                color: '#1e3a8a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}>
+                📊 Risk Level Guide
+              </Typography>
+              
+              <TableContainer component={Paper} sx={{ 
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)', 
+                borderRadius: 2,
+                border: '1px solid #e0e7ff'
+              }}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                      <TableCell sx={{ fontWeight: 700, color: '#1e3a8a' }}>Risk Level</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: '#1e3a8a' }} align="center">Similarity Range</TableCell>
+                      <TableCell sx={{ fontWeight: 700, color: '#1e3a8a' }}>Interpretation</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow sx={{ borderLeft: '4px solid #f44336', '&:hover': { bgcolor: '#fef2f2' } }}>
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f44336' }} />
+                          <Typography sx={{ color: '#dc2626', fontWeight: 600 }}>High Risk</Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 2 }}>
+                        <Typography sx={{ fontWeight: 600, color: '#dc2626' }}>≥ 75%</Typography>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                         Documents contain mostly exact duplicates and/or multiple highly similar questions. Review carefully — likely content overlap. 
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    
+                    <TableRow sx={{ borderLeft: '4px solid #f59e0b', '&:hover': { bgcolor: '#fffbeb' } }}>
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#f59e0b' }} />
+                          <Typography sx={{ color: '#d97706', fontWeight: 600 }}>Medium Risk</Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 2 }}>
+                        <Typography sx={{ fontWeight: 600, color: '#d97706' }}>50–74%</Typography>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                         Documents have some exact duplicates but also a significant portion of partial matches. Moderate similarity; some overlap, but most may be acceptable. 
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    
+                    <TableRow sx={{ borderLeft: '4px solid #10b981', '&:hover': { bgcolor: '#f0fdf4' } }}>
+                      <TableCell sx={{ py: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#10b981' }} />
+                          <Typography sx={{ color: '#059669', fontWeight: 600 }}>Low Risk</Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center" sx={{ py: 2 }}>
+                        <Typography sx={{ fontWeight: 600, color: '#059669' }}>&lt; 50%</Typography>
+                      </TableCell>
+                      <TableCell sx={{ py: 2 }}>
+                        <Typography variant="body2" sx={{ color: '#374151' }}>
+                          Few exact duplicates; most questions are unique. Low chance of problematic overlap; mostly original content.
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+
+            {renderSimilarityMatrix()}
+            {renderComparisonDetails()}
         </Container>
       </Box>
     );
@@ -763,7 +1143,23 @@ export default function SimilarityPage() {
             startIcon={isAnalyzing ? <CircularProgress size={20} color="inherit" /> : <AnalyticsIcon />}
             onClick={analyzeDocuments}
             disabled={uploadedFiles.length < 2 || isAnalyzing || uploadedFiles.some(f => f.status !== 'completed')}
-            sx={{ px: 4, py: 1.5 }}
+            sx={{
+                  bgcolor: "#1e3a8a",
+                  color: "#fff",
+                  fontWeight: 700,
+                  px: 4,
+                  py: 1.5,
+                  fontSize: "1.3rem",
+                  borderRadius: 3,
+                  textTransform: "none",
+                  boxShadow: "0 6px 24px rgba(30,58,138,0.3)",
+                  transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
+                  '&:hover': {
+                    bgcolor: "#12264a",
+                    transform: "translateY(-3px)",
+                    boxShadow: "0 12px 40px rgba(18,38,74,0.4)",
+                  },
+                }}
           >
             {isAnalyzing ? 'Analyzing...' : 'Analyze Similarity'}
           </Button>

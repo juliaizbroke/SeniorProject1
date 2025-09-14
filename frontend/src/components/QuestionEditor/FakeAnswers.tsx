@@ -13,8 +13,8 @@ import { styled } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
-import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import { Question } from '../../types';
 
 const QuestionPaper = styled(Paper)(({ theme }) => ({
@@ -180,11 +180,11 @@ export default function FakeAnswers({
                 )}
                 
                 {isLocked && (
-                  <LockIcon sx={{ color: '#4682b4', fontSize: '1rem' }} />
+                  <PushPinIcon sx={{ color: '#4682b4', fontSize: '1rem' }} />
                 )}
                 
-                {/* Category Lock Button */}
-                <Tooltip title={isCategoryLocked ? "Unlock category (allows category shuffling)" : "Lock category (only answer will shuffle)"}>
+                {/* Category Pin Button */}
+                <Tooltip title={isCategoryLocked ? "Unpin category (allows category shuffling)" : "Pin category (only answer will shuffle)"}>
                   <span>
                     <IconButton 
                       size="small" 
@@ -197,7 +197,7 @@ export default function FakeAnswers({
                         '&.Mui-disabled': { color: 'rgba(0, 0, 0, 0.26)' }
                       }}
                     >
-                      {isCategoryLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+                      {isCategoryLocked ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
                     </IconButton>
                   </span>
                 </Tooltip>
@@ -270,8 +270,8 @@ export default function FakeAnswers({
                 </Box>
                   
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {/* Main Lock/Unlock Button (locks both category and answer) */}
-                  <Tooltip title={isLocked ? "Unlock fake answer (unlocks both category and answer)" : "Lock fake answer (locks both category and answer)"}>
+                  {/* Main Pin/Unpin Button (pins both category and answer) */}
+                  <Tooltip title={isLocked ? "Unpin fake answer (unpins both category and answer)" : "Pin fake answer (pins both category and answer)"}>
                     <IconButton 
                       size="small" 
                       onClick={() => onLockToggle(questionId)}
@@ -281,12 +281,12 @@ export default function FakeAnswers({
                         '&:hover': { bgcolor: 'action.hover' }
                       }}
                     >
-                      {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+                      {isLocked ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
                     </IconButton>
                   </Tooltip>
                   
                   {!isEditing ? (
-                    <Tooltip title={isLocked ? "Answer is locked" : "Edit fake answer"}>
+                    <Tooltip title={isLocked ? "Answer is pinned" : "Edit fake answer"}>
                       <span>
                         <IconButton 
                           size="small" 

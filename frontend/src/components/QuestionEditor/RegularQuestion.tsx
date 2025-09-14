@@ -22,8 +22,8 @@ import EditIcon from '@mui/icons-material/Edit';
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
-import LockIcon from '@mui/icons-material/Lock';
-import LockOpenIcon from '@mui/icons-material/LockOpen';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import WarningIcon from '@mui/icons-material/Warning';
 import SpellcheckIcon from '@mui/icons-material/Spellcheck';
@@ -53,6 +53,9 @@ interface RegularQuestionProps {
   onLockToggle: (questionId: string) => void;
   onShowDuplicates?: () => void;
   duplicateTooltipText?: string;
+  hideSimilarityInfo?: boolean;
+  hideDuplicateIcons?: boolean;
+  hideDuplicateColors?: boolean;
 }
 
 export default function RegularQuestion({
@@ -70,6 +73,9 @@ export default function RegularQuestion({
   onLockToggle,
   onShowDuplicates,
   duplicateTooltipText,
+  hideSimilarityInfo = false,
+  hideDuplicateIcons = false,
+  hideDuplicateColors = false,
 }: RegularQuestionProps) {
   // Local state for immediate image display
   const [localImageData, setLocalImageData] = useState<{
@@ -144,6 +150,13 @@ export default function RegularQuestion({
 
     console.log('Starting image upload for question:', index, file.name);
 
+    // Check file type (PNG and JPEG only)
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload PNG or JPEG images only');
+      return;
+    }
+
     // Check file size (limit to 10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('File size must be less than 10MB');
@@ -198,21 +211,21 @@ export default function RegularQuestion({
       elevation={0}
       sx={{
         opacity: isLocked ? 0.8 : 1,
-        borderColor: getDuplicateBorderColor(),
-        borderWidth: isActualDuplicate() ? '2px' : (isLocked ? '2px' : '1px'),
-        background: getDuplicateBackgroundColor(),
-        boxShadow: isActualDuplicate() ? 
+        borderColor: hideDuplicateColors ? (isLocked ? '#4682b4' : '#e0e0e0') : getDuplicateBorderColor(),
+        borderWidth: isActualDuplicate() && !hideDuplicateColors ? '2px' : (isLocked ? '2px' : '1px'),
+        background: hideDuplicateColors ? 'rgba(255,255,255,0.12)' : getDuplicateBackgroundColor(),
+        boxShadow: (isActualDuplicate() && !hideDuplicateColors) ? 
           `0 8px 32px 0 ${getDuplicateBorderColor()}20` : 
           '0 8px 32px 0 rgba(31,38,135,0.18)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         borderRadius: 2,
-        border: `${isActualDuplicate() ? '2px' : (isLocked ? '2px' : '1px')} solid ${getDuplicateBorderColor()}`,
+        border: `${(isActualDuplicate() && !hideDuplicateColors) ? '2px' : (isLocked ? '2px' : '1px')} solid ${hideDuplicateColors ? (isLocked ? '#4682b4' : '#e0e0e0') : getDuplicateBorderColor()}`,
         position: 'relative',
         transition: 'all 0.3s ease-in-out',
         '&:hover': {
           transform: 'translateY(-2px)',
-          boxShadow: isActualDuplicate() ? 
+          boxShadow: (isActualDuplicate() && !hideDuplicateColors) ? 
             `0 12px 40px 0 ${getDuplicateBorderColor()}30` : 
             '0 12px 40px 0 rgba(31,38,135,0.25)',
         }
@@ -221,7 +234,7 @@ export default function RegularQuestion({
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start', gap: 1 }}>
           {/* Duplicate warning icon */}
-          {isActualDuplicate() && (
+          {!hideDuplicateIcons && isActualDuplicate() && (
             <Tooltip 
               title={duplicateTooltipText || `This question is similar to other questions in Group ${question.duplicate_group_id}`}
               arrow
@@ -282,7 +295,7 @@ export default function RegularQuestion({
                   />
                 </Tooltip>
               )}
-              {isActualDuplicate() && (
+              {!hideSimilarityInfo && isActualDuplicate() && (
                 <Tooltip title={question.duplicate_representative ? 
                   'This is the representative question that will be kept by default' : 
                   `Similarity: ${Math.round((question.duplicate_similarity || 0) * 100)}%`}>
@@ -301,7 +314,7 @@ export default function RegularQuestion({
                   />
                 </Tooltip>
               )}
-              {isActualDuplicate() && typeof question.duplicate_similarity === 'number' && !question.duplicate_representative && (
+              {!hideSimilarityInfo && isActualDuplicate() && typeof question.duplicate_similarity === 'number' && !question.duplicate_representative && (
                 <Chip
                   label={`${Math.round(question.duplicate_similarity * 100)}% similar`}
                   size="small"
@@ -316,7 +329,7 @@ export default function RegularQuestion({
               )}
               {isLocked && (
                 <Chip
-                  label="Locked"
+                  label="Pinned"
                   size="small"
                   sx={{ 
                     fontSize: '0.7rem', 
@@ -332,7 +345,7 @@ export default function RegularQuestion({
         </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
-          <Tooltip title={isLocked ? "Unlock question" : "Lock question"}>
+          <Tooltip title={isLocked ? "Unpin question" : "Pin question"}>
             <IconButton 
               size="small" 
               onClick={() => onLockToggle(questionId)}
@@ -342,12 +355,12 @@ export default function RegularQuestion({
                 '&:hover': { bgcolor: 'action.hover' }
               }}
             >
-              {isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+              {isLocked ? <PushPinIcon fontSize="small" /> : <PushPinOutlinedIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
           
           {!isEditing ? (
-            <Tooltip title={isLocked ? "Question is locked" : "Edit question"}>
+            <Tooltip title={isLocked ? "Question is pinned" : "Edit question"}>
               <span>
                 <IconButton 
                   size="small" 
@@ -419,7 +432,7 @@ export default function RegularQuestion({
               {(currentQuestion.uploaded_image_url || localImageData.uploaded_image_url) ? 'Change Image' : 'Upload Image'}
               <input
                 hidden
-                accept="image/*"
+                accept="image/png,image/jpeg,image/jpg"
                 type="file"
                 onChange={handleImageUpload}
               />

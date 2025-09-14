@@ -256,38 +256,6 @@ export default function EditPage() {
                 Review similar questions using the floating action button or inline indicators. 
                 You can merge, replace, or ignore duplicates as needed.
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1,
-                  px: 2, 
-                  py: 0.5, 
-                  backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                  borderRadius: 2,
-                  border: '1px solid #4caf50'
-                }}>
-                  <Box sx={{ width: 12, height: 12, backgroundColor: '#4caf50', borderRadius: '50%' }} />
-                  <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600 }}>
-                    Representative (will be kept)
-                  </Typography>
-                </Box>
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1,
-                  px: 2, 
-                  py: 0.5, 
-                  backgroundColor: 'rgba(244, 67, 54, 0.1)',
-                  borderRadius: 2,
-                  border: '1px solid #f44336'
-                }}>
-                  <Box sx={{ width: 12, height: 12, backgroundColor: '#f44336', borderRadius: '50%' }} />
-                  <Typography variant="caption" sx={{ color: '#c62828', fontWeight: 600 }}>
-                    Similar (review needed)
-                  </Typography>
-                </Box>
-              </Box>
             </Box>
           )}
           <Tabs

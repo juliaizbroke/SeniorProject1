@@ -34,6 +34,10 @@ os.makedirs(WORD_TEMPLATES_FOLDER, exist_ok=True)
 # Initialize similarity analyzer
 similarity_analyzer = DocumentSimilarityAnalyzer()
 
+# Track recent session creation to prevent rapid duplicates
+recent_sessions = {}  # IP -> last_session_time
+SESSION_CREATION_COOLDOWN = 0.5  # seconds between session creation per IP
+
 # Schedule automatic cleanup of old sessions
 import threading
 import time
@@ -340,12 +344,12 @@ def upload_question_image():
         if not question_id:
             return jsonify({"error": "Question ID is required"}), 400
         
-        # Check if file is an image
-        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+        # Check if file is an image (PNG or JPEG only)
+        allowed_extensions = {'png', 'jpg', 'jpeg'}
         file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-        
+
         if file_extension not in allowed_extensions:
-            return jsonify({"error": "Invalid file format. Please upload an image file"}), 400
+            return jsonify({"error": "Invalid file format. Please upload PNG or JPEG images only"}), 400
         
         # Create secure filename
         original_filename = secure_filename(file.filename)
@@ -785,7 +789,40 @@ def download_default_word_template():
 def create_similarity_session():
     """Create a new similarity analysis session"""
     try:
+        # Get client IP for rate limiting
+        client_ip = request.remote_addr or 'unknown'
+        current_time = time.time()
+        
+        print(f"Session creation request from {client_ip} at {current_time}")
+        
+        # Check for rapid session creation from same IP
+        if client_ip in recent_sessions:
+            time_since_last = current_time - recent_sessions[client_ip]
+            print(f"Last session from {client_ip} was {time_since_last:.2f} seconds ago")
+            if time_since_last < SESSION_CREATION_COOLDOWN:
+                wait_time = SESSION_CREATION_COOLDOWN - time_since_last
+                print(f"Rate limiting triggered for {client_ip}, wait_time: {wait_time:.2f}s")
+                return jsonify({
+                    "success": False,
+                    "error": "rate_limit",
+                    "message": f"Please wait {wait_time:.1f} seconds before creating another session",
+                    "wait_time": wait_time,
+                    "retry_after": wait_time
+                }), 429
+        
+        # Update recent sessions tracking
+        recent_sessions[client_ip] = current_time
+        print(f"Updated recent_sessions for {client_ip}")
+        
+        # Clean up old entries (older than 5 minutes)
+        cutoff_time = current_time - 300  # 5 minutes
+        recent_sessions_cleaned = {ip: timestamp for ip, timestamp in recent_sessions.items() 
+                          if timestamp > cutoff_time}
+        recent_sessions.clear()
+        recent_sessions.update(recent_sessions_cleaned)
+        
         session_id = similarity_analyzer.create_session()
+        print(f"Successfully created session: {session_id}")
         return jsonify({
             "success": True,
             "session_id": session_id,
@@ -793,7 +830,7 @@ def create_similarity_session():
         }), 200
     except Exception as e:
         print(f"Error creating similarity session: {str(e)}")
-        return jsonify({"error": f"Failed to create session: {str(e)}"}), 500
+        return jsonify({"success": False, "error": f"Failed to create session: {str(e)}"}), 500
 
 @app.route('/api/similarity/upload/<session_id>', methods=['POST'])
 def upload_similarity_files(session_id):
@@ -921,6 +958,35 @@ def cleanup_all_similarity_sessions():
     except Exception as e:
         print(f"Error cleaning up all sessions: {str(e)}")
         return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+
+@app.route('/api/similarity/cleanup-empty', methods=['DELETE'])
+def cleanup_empty_similarity_sessions():
+    """Clean up empty similarity sessions immediately"""
+    try:
+        if not os.path.exists(similarity_analyzer.temp_base_dir):
+            return jsonify({"success": True, "cleaned_sessions": 0, "message": "No sessions to clean"}), 200
+        
+        cleaned_count = 0
+        for session_folder in os.listdir(similarity_analyzer.temp_base_dir):
+            if session_folder.startswith("similarity_"):
+                session_path = os.path.join(similarity_analyzer.temp_base_dir, session_folder)
+                if os.path.isdir(session_path):
+                    # Check if session has no uploaded files
+                    uploaded_files_path = os.path.join(session_path, "uploaded_files")
+                    if os.path.exists(uploaded_files_path):
+                        uploaded_files = [f for f in os.listdir(uploaded_files_path) if f.endswith('.docx')]
+                        if len(uploaded_files) == 0:
+                            if similarity_analyzer.cleanup_session(session_folder):
+                                cleaned_count += 1
+                                print(f"Cleaned up empty session: {session_folder}")
+        
+        return jsonify({
+            "success": True,
+            "cleaned_sessions": cleaned_count,
+            "message": f"Cleaned up {cleaned_count} empty sessions"
+        }), 200
+    except Exception as e:
+        return jsonify({"error": f"Empty session cleanup failed: {str(e)}"}), 500
 
 @app.route('/api/similarity/status', methods=['GET'])
 def similarity_system_status():
