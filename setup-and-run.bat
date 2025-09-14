@@ -1,132 +1,165 @@
 @echo off
-REM Exam Generator - Easy Setup Script for Windows
-REM This script will install all dependencies and start the application
+REM =================================================
+REM Exam Generator - Setup & Run
+REM =================================================
+REM This script installs dependencies and starts
+REM the backend and frontend, then opens the app
+REM in the default browser (localhost).
+REM =================================================
 
 setlocal EnableDelayedExpansion
 
 echo.
-echo 🎓 Exam Generator - Easy Setup
-echo ================================
+echo === Exam Generator - Setup ===
 echo.
 
-REM Check if we're in the right directory
+REM Check if we're in the project root
 if not exist "frontend" (
-    echo [ERROR] Please run this script from the project root directory
-    echo [ERROR] Make sure you can see 'frontend' and 'backend' folders
+    echo [ERROR] Cannot find 'frontend' folder. Run this script from project root.
     pause
     exit /b 1
 )
-
 if not exist "backend" (
-    echo [ERROR] Please run this script from the project root directory
-    echo [ERROR] Make sure you can see 'frontend' and 'backend' folders
+    echo [ERROR] Cannot find 'backend' folder. Run this script from project root.
     pause
     exit /b 1
 )
 
-REM Check for Python
+REM ----------------------------
+REM Check Python
+REM ----------------------------
 echo [INFO] Checking for Python...
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     py --version >nul 2>&1
     if !errorlevel! neq 0 (
-        echo [ERROR] Python is not installed!
-        echo Please install Python 3.8 or higher from https://python.org
+        echo [ERROR] Python not found. Install Python 3.8+.
         pause
         exit /b 1
     ) else (
         set PYTHON_CMD=py
-        echo [SUCCESS] Found Python: 
-        py --version
     )
 ) else (
     set PYTHON_CMD=python
-    echo [SUCCESS] Found Python: 
-    python --version
 )
+echo [SUCCESS] Python found: 
+%PYTHON_CMD% --version
 
-REM Check for Node.js
+REM ----------------------------
+REM Check Node.js
+REM ----------------------------
 echo [INFO] Checking for Node.js...
 node --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Node.js is not installed!
-    echo Please install Node.js 18 or higher from https://nodejs.org
+    echo [ERROR] Node.js not found. Install Node.js 18+.
     pause
     exit /b 1
 ) else (
-    echo [SUCCESS] Found Node.js: 
+    echo [SUCCESS] Node.js found: 
     node --version
 )
 
-REM Check for npm
+REM ----------------------------
+REM Check npm
+REM ----------------------------
 echo [INFO] Checking for npm...
-npm --version >nul 2>&1
+call npm --version > temp_npm.txt 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] npm is not installed!
-    echo Please install Node.js which includes npm from https://nodejs.org
+    echo [ERROR] npm not found. Install Node.js which includes npm.
+    del temp_npm.txt
     pause
     exit /b 1
 ) else (
-    echo [SUCCESS] Found npm: 
-    npm --version
+    set /p NPM_VER=<temp_npm.txt
+    echo [SUCCESS] npm found: %NPM_VER%
+    del temp_npm.txt
 )
 
-echo.
-echo [INFO] Starting installation process...
-echo.
 
-REM Install Python dependencies
-echo [INFO] Installing Python dependencies...
+REM ----------------------------
+REM Setup Backend
+REM ----------------------------
+echo.
+echo [INFO] Installing backend dependencies...
 cd backend
 
-REM Create virtual environment if it doesn't exist
+REM Create virtual environment if missing
 if not exist "venv" (
     echo [INFO] Creating Python virtual environment...
     %PYTHON_CMD% -m venv venv
 )
 
-REM Activate virtual environment
-echo [INFO] Activating Python virtual environment...
+REM Activate venv
+echo [INFO] Activating virtual environment...
 call venv\Scripts\activate.bat
 
-REM Upgrade pip
-echo [INFO] Upgrading pip...
+REM Upgrade pip and install packages
+echo [INFO] Upgrading pip and installing Python packages...
 python -m pip install --upgrade pip
-
-REM Install requirements
-echo [INFO] Installing Python packages...
 pip install -r requirements.txt
 
-echo [SUCCESS] Python dependencies installed successfully!
+echo [SUCCESS] Backend ready.
 
-REM Go back to root and install Node.js dependencies
+REM ----------------------------
+REM Setup Frontend
+REM ----------------------------
 cd ..\frontend
-echo [INFO] Installing Node.js dependencies...
+echo [INFO] Installing frontend dependencies...
 call npm install
 
-echo [SUCCESS] Node.js dependencies installed successfully!
+echo [SUCCESS] Frontend dependencies installed.
 
-echo.
-echo [INFO] Building the application for Electron...
-
-REM Set environment variable for Electron build
-set ELECTRON=true
-
-REM Build the frontend
+echo [INFO] Building frontend...
 call npm run build
 
-echo [SUCCESS] Application built successfully!
+echo [SUCCESS] Frontend built successfully.
+
+REM ----------------------------
+REM Start Backend & Frontend
+REM ----------------------------
+echo [INFO] Starting backend and frontend...
+
+REM Navigate back to project root
+cd ..
+
+REM Start backend in a new command window
+start "Backend Server" cmd /k "cd /d "%CD%\backend" && call venv\Scripts\activate.bat && set PORT=5000 && %PYTHON_CMD% app.py"
+
+REM Start frontend in a new command window  
+start "Frontend Server" cmd /k "cd /d "%CD%\frontend" && npm run start"
+
+REM Wait for services to start up
+echo [INFO] Waiting for services to start (15 seconds)...
+timeout /t 15 >nul
+
+REM Try to verify services are running
+echo [INFO] Checking if services are running...
+curl -s http://localhost:5000/ >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Backend is responding on port 5000
+) else (
+    echo [WARNING] Backend might not be fully started yet
+)
+
+curl -s http://localhost:3000/ >nul 2>&1
+if %errorlevel% equ 0 (
+    echo [SUCCESS] Frontend is responding on port 3000
+) else (
+    echo [WARNING] Frontend might not be fully started yet
+)
+
+REM Open browser regardless of curl check (curl might not be available)
+echo [INFO] Opening browser...
+start http://localhost:3000
 
 echo.
-echo [INFO] Starting the Exam Generator...
+echo [SUCCESS] Setup complete! Backend and frontend are running.
 echo.
-
-REM Start the application
-call npm run electron
-
+echo The application should be available at: http://localhost:3000
+echo Backend API is running at: http://localhost:5000
 echo.
-echo [SUCCESS] Setup completed successfully!
-echo Next time, you can run the application directly with:
-echo   cd frontend ^&^& npm run electron
+echo Note: It may take a few moments for the applications to start fully.
+echo If localhost:3000 shows connection refused, wait a bit longer and refresh.
 echo.
+echo Press any key to exit this script (the servers will keep running)...
 pause
