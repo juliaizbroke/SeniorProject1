@@ -150,13 +150,16 @@ if %errorlevel% equ 0 (
 
 REM Open browser regardless of curl check (curl might not be available)
 echo [INFO] Opening browser...
-start http://localhost:3000
+start "" http://localhost:3000
 
 echo.
 echo [SUCCESS] Setup complete! Backend and frontend are running.
 echo.
 echo The application should be available at: http://localhost:3000
 echo Backend API is running at: http://localhost:5001
+echo.
+echo [BROWSER] If browser didn't open automatically, manually go to:
+echo          http://localhost:3000
 echo.
 echo Note: It may take a few moments for the applications to start fully.
 echo If localhost:3000 shows connection refused, wait a bit longer and refresh.
