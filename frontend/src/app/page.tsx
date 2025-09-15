@@ -77,7 +77,7 @@ export default function LandingPage() {
             <Button
               variant="contained"
               size="large"
-              onClick={() => '/home'}
+              onClick={() => window.location.href = '/home'}
               sx={{
                 bgcolor: "#1e3a8a",
                 color: "#fff",

@@ -43,7 +43,7 @@ interface ExcelUploadItem {
   status: 'uploading' | 'completed' | 'error';
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 
 export default function HomePage() {
   const [error, setError] = useState<string>("");
@@ -77,7 +77,6 @@ export default function HomePage() {
       const response = await fetch(`${API_BASE_URL}/word-templates`);
       if (response.ok) {
         const data = await response.json();
-        console.log('Loaded word templates:', data); // Debug log
         const templates = data.templates || data; // Handle both formats
         setWordTemplates(templates);
         
@@ -280,12 +279,6 @@ export default function HomePage() {
       
       if (response.ok) {
         setWordUploadProgress(100);
-        try {
-          const result = await response.json();
-          console.log('Upload successful:', result);
-        } catch {
-          console.log('Upload successful but no JSON response');
-        }
         await loadWordTemplates(); // Reload templates
         
         setTimeout(() => {

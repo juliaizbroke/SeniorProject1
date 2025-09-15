@@ -1,6 +1,6 @@
 import { UploadResponse, GenerateRequest, GenerateResponse } from '../types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 
 export async function testApiConnection(): Promise<boolean> {
   try {

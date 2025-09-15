@@ -1,6 +1,6 @@
-# 🎓 Exam Generator - Desktop Application
+# 🎓 Exam Generator - Offline Web Application
 
-A desktop application for generating exam papers and answer keys with grammar checking and duplicate detection features.
+An offline web application for generating exam papers and answer keys with grammar checking and duplicate detection features. Runs entirely on your local machine - no internet connection required after setup!
 
 ## 📋 Quick Start for Professors
 
@@ -25,13 +25,22 @@ Before running the application, please install:
 #### For Windows:
 1. Open Command Prompt
 2. Navigate to the project folder: `cd C:\path\to\SeniorProject1`
-3. Double-click `setup-and-run.bat` or run: `setup-and-run.bat`
+3. **First time setup**: Double-click `setup-and-run.bat` or run: `setup-and-run.bat`
+4. **Quick start** (after setup): Double-click `quick-start.bat`
 
-The script will:
+The setup script will:
 - ✅ Check if Python and Node.js are installed
 - ✅ Install all dependencies automatically
-- ✅ Build the application
-- ✅ Start the desktop application
+- ✅ Start both frontend and backend servers
+- ✅ Open the application in your browser
+
+### ⚡ Quick Start (After First Setup)
+
+Once you've run the setup script once, you can use the quick start option:
+- **Windows**: Run `quick-start.bat`
+- **Mac/Linux**: Run `./setup-and-run.sh` (same script, but faster)
+
+This skips dependency installation and starts the servers immediately.
 
 ### 🔧 Manual Setup (Alternative)
 
@@ -53,18 +62,20 @@ npm run build
 npm run electron
 ```
 
-## 📱 Using the Application
+## 🌐 Using the Application
 
-Once the application starts, you'll see a desktop window with the Exam Generator interface.
+Once the application starts, it will open in your default web browser at `http://localhost:3000`. The application runs entirely offline - your data never leaves your computer!
 
-### Features:
-- 📄 **Upload Excel files** with question banks
+### ✨ Key Features:
+- 🌐 **Offline Web App** - Works without internet after setup
+- 📄 **Upload Excel files** with question banks  
 - 🔍 **Grammar checking** with error highlighting
 - 🔄 **Duplicate detection** and management
 - ✏️ **Question editing** and customization
 - 📋 **Multiple question types**: Multiple choice, True/False, Matching, Written
 - 📑 **Generate Word documents** for exams and answer keys
 - 🖼️ **Image support** for questions
+- ⚡ **Fast processing** with optimized LanguageTool caching
 
 ### Basic Workflow:
 1. **Upload** your Excel question bank file
@@ -73,14 +84,25 @@ Once the application starts, you'll see a desktop window with the Exam Generator
 4. **Preview** your exam structure
 5. **Generate** final Word documents
 
-## 📁 File Structure
+## � Privacy & Offline Operation
+
+**Your data stays on your computer!**
+- ✅ **Fully Offline** - No data sent to external servers
+- ✅ **Local Processing** - All grammar checking and analysis happens locally
+- ✅ **Secure** - Your question banks and exams never leave your machine
+- ✅ **Fast** - No network delays, everything runs on your hardware
+
+*Note: Internet connection only required for initial LanguageTool download (~100MB), then fully offline*
+
+## �📁 File Structure
 
 ```
 SeniorProject1/
 ├── frontend/           # Next.js frontend application
 ├── backend/           # Python Flask backend
 ├── setup-and-run.sh  # Mac/Linux setup script
-├── setup-and-run.bat # Windows setup script
+├── setup-and-run.bat # Windows setup script (first time)
+├── quick-start.bat   # Windows quick start (after setup)
 └── README.md         # This file
 ```
 

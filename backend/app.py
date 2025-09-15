@@ -27,6 +27,7 @@ except ImportError:
 app = Flask(__name__)
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://127.0.0.1:3000", 
     "https://senior-project1.vercel.app"
 ]
 CORS(app, origins=ALLOWED_ORIGINS)
@@ -1032,4 +1033,18 @@ def similarity_system_status():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
+    
+    # Warm up heavy services in background to avoid slow first requests
+    import threading
+    from warm_up_services import warm_up_all_services
+    
+    def start_warm_up():
+        import time
+        time.sleep(2)  # Give Flask time to start
+        warm_up_all_services()
+    
+    # Start warm-up in background thread
+    warm_up_thread = threading.Thread(target=start_warm_up, daemon=True)
+    warm_up_thread.start()
+    
     app.run(host="0.0.0.0", port=port, debug=True)

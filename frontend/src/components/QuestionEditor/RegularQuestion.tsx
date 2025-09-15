@@ -19,7 +19,7 @@ import {
 import { styled } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PushPinIcon from '@mui/icons-material/PushPin';

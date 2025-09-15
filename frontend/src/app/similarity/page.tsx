@@ -40,7 +40,7 @@ import {
 } from '@mui/icons-material';
 import Navbar from '../../components/Navbar';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5001';
 
 interface UploadedFile {
   id: string;

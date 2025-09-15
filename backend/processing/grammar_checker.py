@@ -3,11 +3,49 @@
 import language_tool_python
 import logging
 from typing import List, Dict, Any
+import os
+
+# Global instance to avoid re-downloading LanguageTool
+_grammar_tool_instance = None
+_grammar_tool_language = None
+
+def get_grammar_tool(language='en-US'):
+    """Get a cached LanguageTool instance to avoid re-downloading."""
+    global _grammar_tool_instance, _grammar_tool_language
+    
+    if _grammar_tool_instance is None or _grammar_tool_language != language:
+        logging.info(f"Initializing LanguageTool for language: {language}")
+        try:
+            # Try to initialize with specific cache directory and config
+            cache_dir = os.path.expanduser("~/.cache/language_tool_python")
+            os.makedirs(cache_dir, exist_ok=True)
+            
+            # Initialize with local installation
+            _grammar_tool_instance = language_tool_python.LanguageTool(
+                language, 
+                config={'cacheSize': 1000, 'pipelineCaching': True}
+            )
+            _grammar_tool_language = language
+            logging.info(f"Grammar tool initialized successfully for language: {language}")
+        except Exception as e:
+            logging.warning(f"Failed to initialize local grammar tool: {str(e)}")
+            try:
+                # Fallback to public API
+                _grammar_tool_instance = language_tool_python.LanguageToolPublicAPI(language)
+                _grammar_tool_language = language
+                logging.info(f"Grammar tool initialized with public API for language: {language}")
+            except Exception as e2:
+                logging.error(f"Failed to initialize grammar tool: {str(e2)}")
+                _grammar_tool_instance = None
+                _grammar_tool_language = None
+    
+    return _grammar_tool_instance
 
 class GrammarChecker:
     """
     Grammar checker that uses language-tool-python to identify potential grammar errors in questions.
     Does not fix grammar but marks questions with potential issues.
+    Uses a cached global instance to avoid re-downloading LanguageTool.
     """
     
     def __init__(self, language='en-US'):
@@ -18,24 +56,7 @@ class GrammarChecker:
             language (str): Language code for the grammar checker (default: 'en-US')
         """
         self.language = language
-        self.tool = None
-        self._initialize_tool()
-    
-    def _initialize_tool(self):
-        """Initialize the LanguageTool instance."""
-        try:
-            # Try to initialize with local installation first
-            self.tool = language_tool_python.LanguageTool(self.language)
-            logging.info(f"Grammar checker initialized successfully for language: {self.language}")
-        except Exception as e:
-            logging.warning(f"Failed to initialize local grammar checker: {str(e)}")
-            try:
-                # Try remote server as fallback
-                self.tool = language_tool_python.LanguageToolPublicAPI(self.language)
-                logging.info(f"Grammar checker initialized with remote API for language: {self.language}")
-            except Exception as e2:
-                logging.error(f"Failed to initialize grammar checker with remote API: {str(e2)}")
-                self.tool = None
+        self.tool = get_grammar_tool(language)
     
     def check_text(self, text: str) -> Dict[str, Any]:
         """
