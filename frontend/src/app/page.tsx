@@ -2,14 +2,13 @@
 
 import { Box, Button, Typography, Container, Grid, Paper } from "@mui/material";
 import Navbar from "../components/Navbar";
-import { useRouter } from "next/navigation";
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FindInPageIcon from '@mui/icons-material/FindInPage';
 
 export default function LandingPage() {
-  const router = useRouter();
+  // const router = useRouter(); // Using Link components instead
 
   return (
     <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', color: '#222' }}>
@@ -78,6 +77,7 @@ export default function LandingPage() {
             <Button
               variant="contained"
               size="large"
+              onClick={() => '/home'}
               sx={{
                 bgcolor: "#1e3a8a",
                 color: "#fff",
@@ -95,7 +95,6 @@ export default function LandingPage() {
                   boxShadow: "0 8px 32px rgba(18,38,74,0.25)",
                 },
               }}
-              onClick={() => router.push("/home")}
             >
               Let&apos;s Get Started!
             </Button>
@@ -225,6 +224,7 @@ export default function LandingPage() {
               <Button
                 variant="contained"
                 size="large"
+                onClick={() => window.location.href = '/similarity'}
                 sx={{
                   bgcolor: "#1e3a8a",
                   color: "#fff",
@@ -242,7 +242,6 @@ export default function LandingPage() {
                     boxShadow: "0 12px 40px rgba(18,38,74,0.4)",
                   },
                 }}
-                onClick={() => router.push("/similarity")}
               >
                 Start Similarity Check
               </Button>
