@@ -5,13 +5,19 @@ import {
   Typography,
   Button,
   Tooltip,
-  Fab,
-  Badge,
+  Card,
+  CardContent,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
-import LockOpenOutlinedIcon from '@mui/icons-material/LockOpenOutlined';
-import LockIcon from '@mui/icons-material/Lock';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
+import PushPinIcon from '@mui/icons-material/PushPin';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 import { Question } from '../../types';
 import { useQuestionEditor } from './hooks';
@@ -19,7 +25,6 @@ import { getShuffleInfo, getShuffleTooltip } from './shuffleUtils';
 import { createShuffleHandler } from './shuffleLogic';
 import FakeAnswers from './FakeAnswers';
 import RegularQuestion from './RegularQuestion';
-import DuplicatePanel from './DuplicatePanel';
 
 interface QuestionEditorProps {
   questions: Question[];
@@ -34,7 +39,12 @@ export default function QuestionEditor({
   onQuestionsChange, 
   forceRefreshLocks 
 }: QuestionEditorProps) {
-  const [isDuplicatePanelOpen, setIsDuplicatePanelOpen] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
+  const [showChooseDialog, setShowChooseDialog] = useState(false);
+  const [chooseAction, setChooseAction] = useState<{
+    groupId: number;
+    keepIndex?: number;
+  } | null>(null);
   const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
   
   const {
@@ -120,27 +130,6 @@ export default function QuestionEditor({
     hasAutoShuffled.current = false;
   };
 
-  const duplicateCount = questions.filter(q => {
-    if (!q.is_duplicate || !q.duplicate_group_id) return false;
-    // Count how many questions in current exam have the same duplicate_group_id
-    const sameGroupQuestions = questions.filter(other => 
-      other.duplicate_group_id === q.duplicate_group_id
-    );
-    return sameGroupQuestions.length > 1;
-  }).length;
-  
-  const duplicateGroups = new Set(
-    questions
-      .filter(q => {
-        if (!q.is_duplicate || !q.duplicate_group_id) return false;
-        const sameGroupQuestions = questions.filter(other => 
-          other.duplicate_group_id === q.duplicate_group_id
-        );
-        return sameGroupQuestions.length > 1;
-      })
-      .map(q => q.duplicate_group_id)
-  );
-
   const handleScrollToQuestion = (index: number) => {
     questionRefs.current[index]?.scrollIntoView({ 
       behavior: 'smooth', 
@@ -154,7 +143,118 @@ export default function QuestionEditor({
     .filter((i) => i >= 0);
 
   const handleShowDuplicates = () => {
-    setIsDuplicatePanelOpen(true);
+    // This function is no longer needed but kept for compatibility
+    // The duplicate groups are now shown inline at the top
+  };
+
+  // Handle choosing one question from a duplicate group
+  const handleChooseOne = (groupId: number, keepIndex: number) => {
+    const updatedQuestions = [...questions];
+    const questionsToRemove = questions
+      .map((q, index) => q.duplicate_group_id === groupId && index !== keepIndex ? index : -1)
+      .filter(index => index >= 0)
+      .sort((a, b) => b - a); // Remove from highest index first
+
+    // Remove duplicate questions
+    questionsToRemove.forEach(index => {
+      updatedQuestions.splice(index, 1);
+    });
+
+    // Clear duplicate flags from remaining question
+    const remainingQuestion = updatedQuestions.find(q => 
+      q.duplicate_group_id === groupId
+    );
+    
+    if (remainingQuestion) {
+      remainingQuestion.is_duplicate = false;
+      remainingQuestion.duplicate_group_id = undefined;
+      remainingQuestion.duplicate_representative = false;
+      remainingQuestion.duplicate_similarity = undefined;
+    }
+
+    onQuestionsChange(updatedQuestions);
+    setShowChooseDialog(false);
+    setChooseAction(null);
+  };
+
+  // Handle ignoring a duplicate group
+  const handleIgnoreGroup = (groupId: number) => {
+    const updatedQuestions = questions.map(q => 
+      q.duplicate_group_id === groupId 
+        ? {
+            ...q,
+            is_duplicate: false,
+            duplicate_group_id: undefined,
+            duplicate_representative: false,
+            duplicate_similarity: undefined,
+          }
+        : q
+    );
+    
+    onQuestionsChange(updatedQuestions);
+  };
+
+  // Get duplicate groups for display at the top
+  const getDuplicateGroups = () => {
+    const groups = new Map<number, {
+      id: number;
+      questions: {
+        question: Question;
+        index: number;
+        isRepresentative: boolean;
+      }[];
+      similarity: number;
+    }>();
+    
+    questions.forEach((question, index) => {
+      if (question.is_duplicate && question.duplicate_group_id) {
+        const groupId = question.duplicate_group_id;
+        
+        if (!groups.has(groupId)) {
+          groups.set(groupId, {
+            id: groupId,
+            questions: [],
+            similarity: question.duplicate_representative ? 0 : (question.duplicate_similarity || 0),
+          });
+        }
+        
+        const group = groups.get(groupId)!;
+        group.questions.push({
+          question,
+          index,
+          isRepresentative: question.duplicate_representative || false,
+        });
+        
+        // Update similarity to highest non-representative similarity in group
+        if (question.duplicate_similarity && !question.duplicate_representative && question.duplicate_similarity > group.similarity) {
+          group.similarity = question.duplicate_similarity;
+        }
+      }
+    });
+    
+    // Filter out groups that only have 1 question in the current exam
+    const actualDuplicateGroups = new Map();
+    groups.forEach((group, groupId) => {
+      if (group.questions.length > 1) { 
+        actualDuplicateGroups.set(groupId, group);
+      }
+    });
+    
+    return Array.from(actualDuplicateGroups.values()).sort((a, b) => b.similarity - a.similarity);
+  };
+
+  const getSimilarityColor = (similarity: number) => {
+    if (similarity >= 0.9) return '#c62828';
+    if (similarity >= 0.8) return '#ef6c00';
+    if (similarity >= 0.7) return '#f57c00';
+    return '#fbc02d';
+  };
+
+  const getSimilarityText = (similarity: number) => {
+    if (similarity >= 0.9) return 'Very High';
+    if (similarity >= 0.8) return 'High';
+    if (similarity >= 0.7) return 'Medium';
+    return 'Low';
   };
 
   const getDuplicateTooltipText = (question: Question) => {
@@ -237,6 +337,134 @@ export default function QuestionEditor({
   return (
     <Box sx={{ position: 'relative' }}>
       <Stack spacing={2}>
+        {/* Duplicate Groups Display - At the top */}
+        {(() => {
+          const duplicateGroups = getDuplicateGroups();
+          if (duplicateGroups.length === 0) return null;
+          
+          return (
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#1a1a1a' }}>
+                Duplicate Question Groups ({duplicateGroups.length} group{duplicateGroups.length !== 1 ? 's' : ''})
+              </Typography>
+              <Stack spacing={2}>
+                {duplicateGroups.map((group) => (
+                  <Card key={group.id} sx={{ 
+                    border: '2px solid',
+                    borderColor: getSimilarityColor(group.similarity),
+                    borderRadius: 2,
+                    backgroundColor: `${getSimilarityColor(group.similarity)}10`,
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                          Group {group.id} ({group.questions.length} questions)
+                        </Typography>
+                        <Chip
+                          size="small"
+                          label={`${getSimilarityText(group.similarity)} (${Math.round(group.similarity * 100)}%)`}
+                          sx={{
+                            backgroundColor: getSimilarityColor(group.similarity),
+                            color: 'white',
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                          }}
+                        />
+                      </Box>
+
+                      <Stack spacing={0} sx={{ mb: 3 }}>
+                        {group.questions.map((item: {
+                          question: Question;
+                          index: number;
+                          isRepresentative: boolean;
+                        }, idx: number) => {
+                          const questionId = getQuestionId(item.question, item.index);
+                          const isEditing = editingQuestions.has(questionId);
+                          const isLocked = lockedQuestions.has(questionId);
+                          const currentQuestion = isEditing ? tempQuestions[item.index] || item.question : item.question;
+
+                          return (
+                            <Box
+                              key={idx}
+                              ref={(el) => { questionRefs.current[item.index] = el as HTMLDivElement | null; }}
+                              sx={{
+                                border: '3px solid #e0e0e0',
+                                borderRadius: 1,
+                                backgroundColor: 'transparent',
+                                overflow: 'hidden',
+                                mb: 1,
+                                '&:hover': {
+                                  backgroundColor: 'transparent',
+                                },
+                                // Override question paper styling to remove individual question colors and hover effects
+                                '& .MuiPaper-root': {
+                                  backgroundColor: 'transparent !important',
+                                  border: 'none !important',
+                                  boxShadow: 'none !important',
+                                  marginBottom: '0 !important',
+                                  '&:hover': {
+                                    transform: 'none !important',
+                                    boxShadow: 'none !important',
+                                  }
+                                }
+                              }}
+                            >
+                              <RegularQuestion
+                                question={item.question}
+                                index={item.index}
+                                isEditing={isEditing}
+                                isLocked={isLocked}
+                                currentQuestion={currentQuestion}
+                                questionId={questionId}
+                                allQuestions={questions}
+                                onQuestionChange={handleQuestionChange}
+                                onEdit={handleEdit}
+                                onSave={handleSave}
+                                onCancel={handleCancel}
+                                onLockToggle={handleLockToggle}
+                                onShowDuplicates={handleShowDuplicates}
+                                duplicateTooltipText={getDuplicateTooltipText(item.question)}
+                                hideSimilarityInfo={true}
+                                hideDuplicateIcons={true}
+                                hideDuplicateColors={true}
+                              />
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<CheckCircleIcon />}
+                          onClick={() => {
+                            setChooseAction({ groupId: group.id });
+                            setSelectedGroup(group.id);
+                            setShowChooseDialog(true);
+                          }}
+                          sx={{ fontSize: '0.75rem' }}
+                        >
+                          Choose One
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<VisibilityOffIcon />}
+                          onClick={() => handleIgnoreGroup(group.id)}
+                          sx={{ fontSize: '0.75rem' }}
+                        >
+                          Ignore
+                        </Button>
+                      </Stack>
+                    </CardContent>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          );
+        })()}
+
         {/* Show warning only for significant ID collisions */}
         {hasIdCollisions && questions.length > 1 && (
           <Box sx={{
@@ -296,7 +524,7 @@ export default function QuestionEditor({
           alignItems: 'center',
           gap: 2
         }}>
-          <LockIcon sx={{ color: '#4682b4' }} />
+          <PushPinIcon sx={{ color: '#4682b4' }} />
           <Typography variant="body2" sx={{ color: '#1a1a1a', flex: 1 }}>
             You have {lockedQuestions.size} locked question(s) in other tabs. They remain locked even when not visible.
           </Typography>
@@ -309,7 +537,7 @@ export default function QuestionEditor({
           <Tooltip title="Clear all locked questions and categories">
             <Button
               variant="outlined"
-              startIcon={<LockOpenOutlinedIcon />}
+              startIcon={<PushPinOutlinedIcon />}
               onClick={handleClearAllLocks}
               sx={{
                 borderColor: '#4682b4',
@@ -368,7 +596,21 @@ export default function QuestionEditor({
       />
 
       {/* Regular Questions */}
-      {questions.filter(q => q.type !== 'fake answer').map((question, originalIndex) => {
+      {questions.filter(q => {
+        // Filter out fake answers
+        if (q.type === 'fake answer') return false;
+        
+        // Filter out questions that are part of duplicate groups with multiple questions in current exam
+        if (q.is_duplicate && q.duplicate_group_id) {
+          const sameGroupQuestions = questions.filter(other => 
+            other.duplicate_group_id === q.duplicate_group_id
+          );
+          // Only filter out if there are actually multiple questions in the group
+          if (sameGroupQuestions.length > 1) return false;
+        }
+        
+        return true;
+      }).map((question, originalIndex) => {
         const index = questions.findIndex((q, i) => i >= originalIndex && q === question);
         const questionId = getQuestionId(question, index);
         const isEditing = editingQuestions.has(questionId);
@@ -401,36 +643,86 @@ export default function QuestionEditor({
       })}
     </Stack>
 
-    {/* Floating Action Button for Duplicates */}
-    {duplicateCount > 0 && (
-      <Fab
-        color="warning"
-        sx={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1000,
-          backgroundColor: '#ff9800',
-          '&:hover': {
-            backgroundColor: '#f57c00',
-          },
-        }}
-        onClick={() => setIsDuplicatePanelOpen(true)}
-      >
-        <Badge badgeContent={duplicateGroups.size} color="error">
-          <ContentCopyIcon />
-        </Badge>
-      </Fab>
-    )}
+    {/* Choose One Dialog */}
+    <Dialog
+      open={showChooseDialog}
+      onClose={() => setShowChooseDialog(false)}
+      maxWidth="md"
+      fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          maxHeight: '80vh',
+        }
+      }}
+    >
+      <DialogTitle>
+        Choose One Question to Keep
+      </DialogTitle>
+      <DialogContent>
+        {chooseAction && selectedGroup !== null && (
+          <>
+            <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+              Select which question to keep. The others will be removed from the exam.
+            </Typography>
+            
+            {getDuplicateGroups()
+              .find(g => g.id === selectedGroup)
+              ?.questions.map((item: {
+                question: Question;
+                index: number;
+                isRepresentative: boolean;
+              }, idx: number) => {
+                const questionId = getQuestionId(item.question, item.index);
+                const isEditing = editingQuestions.has(questionId);
+                const isLocked = lockedQuestions.has(questionId);
+                const currentQuestion = isEditing ? tempQuestions[item.index] || item.question : item.question;
 
-    {/* Duplicate Management Panel */}
-    <DuplicatePanel
-      open={isDuplicatePanelOpen}
-      onClose={() => setIsDuplicatePanelOpen(false)}
-      questions={questions}
-      onQuestionsChange={onQuestionsChange}
-      onScrollToQuestion={handleScrollToQuestion}
-    />
-  </Box>
+                return (
+                  <Card
+                    key={idx}
+                    sx={{
+                      mb: 2,
+                      border: '2px solid #e0e0e0',
+                      cursor: 'pointer',
+                      '&:hover': { borderColor: '#1976d2' },
+                      backgroundColor: '#fff',
+                    }}
+                    onClick={() => {
+                      handleChooseOne(selectedGroup, item.index);
+                    }}
+                  >
+                    <CardContent sx={{ p: 2 }}>
+                      <RegularQuestion
+                        question={item.question}
+                        index={item.index}
+                        isEditing={false} // Don't allow editing in dialog
+                        isLocked={isLocked}
+                        currentQuestion={currentQuestion}
+                        questionId={questionId}
+                        allQuestions={questions}
+                        onQuestionChange={handleQuestionChange}
+                        onEdit={() => {}} // Disable editing in dialog
+                        onSave={() => {}} // Disable saving in dialog
+                        onCancel={() => {}} // Disable cancel in dialog
+                        onLockToggle={handleLockToggle}
+                        onShowDuplicates={handleShowDuplicates}
+                        duplicateTooltipText={getDuplicateTooltipText(item.question)}
+                        hideSimilarityInfo={true}
+                        hideDuplicateIcons={true}
+                        hideDuplicateColors={true}
+                      />
+                    </CardContent>
+                  </Card>
+                );
+              })
+            }
+          </>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setShowChooseDialog(false)}>Cancel</Button>
+      </DialogActions>
+    </Dialog>
+    </Box>
   );
 }

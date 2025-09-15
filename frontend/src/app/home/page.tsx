@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+
 import {
   Box,
   Container,
@@ -42,6 +43,8 @@ interface ExcelUploadItem {
   status: 'uploading' | 'completed' | 'error';
 }
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 export default function HomePage() {
   const [error, setError] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -71,7 +74,7 @@ export default function HomePage() {
 
   const loadWordTemplates = async () => {
     try {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/word-templates`);
+      const response = await fetch(`${API_BASE_URL}/word-templates`);
       if (response.ok) {
         const data = await response.json();
         console.log('Loaded word templates:', data); // Debug log
@@ -207,7 +210,7 @@ export default function HomePage() {
 
   const downloadTemplate = async () => {
     try {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-template`);
+      const response = await fetch(`${API_BASE_URL}/download-template`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -229,7 +232,7 @@ export default function HomePage() {
 
   const downloadWordTemplate = async () => {
     try {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/download-word-template`);
+      const response = await fetch(`${API_BASE_URL}/download-word-template`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -268,7 +271,7 @@ export default function HomePage() {
       const formData = new FormData();
       formData.append('file', file);
       
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload-word-template`, {
+      const response = await fetch(`${API_BASE_URL}/upload-word-template`, {
         method: 'POST',
         body: formData,
       });
@@ -344,7 +347,7 @@ export default function HomePage() {
 
   const makeWordTemplateDefault = async (templateId: string) => {
     try {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/word-templates/${templateId}/make-default`, {
+      const response = await fetch(`${API_BASE_URL}/word-templates/${templateId}/make-default`, {
         method: 'POST',
       });
       if (response.ok) {
@@ -377,7 +380,7 @@ export default function HomePage() {
     
     if (confirm(confirmMessage)) {
       try {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/word-templates/${templateId}`, {
+        const response = await fetch(`${API_BASE_URL}/word-templates/${templateId}`, {
           method: 'DELETE',
         });
         if (response.ok) {

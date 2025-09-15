@@ -38,6 +38,10 @@ os.makedirs(WORD_TEMPLATES_FOLDER, exist_ok=True)
 # Initialize similarity analyzer
 similarity_analyzer = DocumentSimilarityAnalyzer()
 
+# Track recent session creation to prevent rapid duplicates
+recent_sessions = {}  # IP -> last_session_time
+SESSION_CREATION_COOLDOWN = 0.5  # seconds between session creation per IP
+
 # Schedule automatic cleanup of old sessions
 import threading
 import time
@@ -54,34 +58,59 @@ cleanup_thread = threading.Thread(target=cleanup_old_sessions_periodically, daem
 cleanup_thread.start()
 
 # File cleanup configuration
-FILE_EXPIRY_MINUTES = int(os.environ.get('FILE_EXPIRY_MINUTES', 30))  # Default 30 minutes
+FILE_EXPIRY_MINUTES = int(os.environ.get('FILE_EXPIRY_MINUTES', 3))  # Default 3 minutes
 file_registry = {}  # Track files and their creation times
 
 def startup_cleanup():
     """Clean up any existing files on server startup"""
     try:
-        for filename in os.listdir(UPLOAD_FOLDER):
-            if filename.endswith('.docx'):
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-                os.remove(file_path)
-                print(f"Startup cleanup: Removed {filename}")
+        # 1. Clean exam files (existing functionality)
+        if os.path.exists(UPLOAD_FOLDER):
+            for filename in os.listdir(UPLOAD_FOLDER):
+                if filename.endswith(('.docx', '.html')):  # Include HTML files too
+                    file_path = os.path.join(UPLOAD_FOLDER, filename)
+                    os.remove(file_path)
+                    print(f"Startup cleanup: Removed exam file {filename}")
+        
+        # 2. Clean image files
+        images_dir = os.path.join("processing", "templates", "images")
+        if os.path.exists(images_dir):
+            for filename in os.listdir(images_dir):
+                file_path = os.path.join(images_dir, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                    print(f"Startup cleanup: Removed image {filename}")
+        
+        # 3. Clean similarity sessions (all old sessions)
+        similarity_analyzer.cleanup_old_sessions(0)  # Clean all sessions regardless of age
+        print("Startup cleanup: Cleaned all similarity sessions")
+        
+        # 4. Reset file registry
+        file_registry.clear()
+        print("Startup cleanup: Reset file registry")
+        
     except Exception as e:
         print(f"Error during startup cleanup: {e}")
 
 # Perform startup cleanup
 startup_cleanup()
 
-def cleanup_file_after_delay(file_path, delay_minutes=30):
+def cleanup_file_after_delay(file_path, delay_minutes=None):
     """Delete file after specified delay in minutes"""
+    if delay_minutes is None:
+        delay_minutes = FILE_EXPIRY_MINUTES
     def delete_file():
+        print(f"Starting {delay_minutes}-minute countdown for: {file_path}")
         time.sleep(delay_minutes * 60)  # Convert minutes to seconds
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
-                print(f"Cleaned up file: {file_path}")
+                print(f"Cleaned up file after {delay_minutes} minutes: {file_path}")
                 # Remove from registry
                 if file_path in file_registry:
                     del file_registry[file_path]
+            else:
+                print(f"File already deleted: {file_path}")
         except Exception as e:
             print(f"Error cleaning up file {file_path}: {e}")
     
@@ -111,7 +140,55 @@ def register_file_for_cleanup(file_path, delay_minutes=None):
     """Register a file for cleanup tracking"""
     file_registry[file_path] = time.time()
     cleanup_delay = delay_minutes if delay_minutes is not None else FILE_EXPIRY_MINUTES
+    print(f"Registering file for cleanup: {file_path} (delay: {cleanup_delay} minutes)")
     cleanup_file_after_delay(file_path, cleanup_delay)
+
+def cleanup_images_folder_after_delay(delay_minutes=None):
+    """Delete all files in the images folder after specified delay"""
+    if delay_minutes is None:
+        delay_minutes = FILE_EXPIRY_MINUTES
+    def delete_images():
+        time.sleep(delay_minutes * 60)  # Convert minutes to seconds
+        try:
+            images_dir = os.path.join("processing", "templates", "images")
+            if os.path.exists(images_dir):
+                # Get all files in images directory
+                for filename in os.listdir(images_dir):
+                    file_path = os.path.join(images_dir, filename)
+                    if os.path.isfile(file_path):  # Only delete files, not subdirectories
+                        try:
+                            os.remove(file_path)
+                            print(f"Bulk cleanup: Removed image {filename}")
+                            # Remove from registry if it exists
+                            if file_path in file_registry:
+                                del file_registry[file_path]
+                        except Exception as e:
+                            print(f"Error removing image {filename}: {e}")
+                print(f"Bulk images cleanup completed after {delay_minutes} minutes")
+        except Exception as e:
+            print(f"Error during bulk images cleanup: {e}")
+    
+    # Start cleanup in background thread
+    cleanup_thread = threading.Thread(target=delete_images, daemon=True)
+    cleanup_thread.start()
+    print(f"Scheduled bulk images cleanup in {delay_minutes} minutes")
+
+def cleanup_expired_files_after_delay(delay_minutes=None):
+    """Run cleanup_expired_files() after specified delay"""
+    if delay_minutes is None:
+        delay_minutes = FILE_EXPIRY_MINUTES
+    def delayed_cleanup():
+        time.sleep(delay_minutes * 60)  # Convert minutes to seconds
+        try:
+            cleanup_expired_files()
+            print(f"Expired files cleanup completed after {delay_minutes} minutes")
+        except Exception as e:
+            print(f"Error during delayed expired files cleanup: {e}")
+    
+    # Start cleanup in background thread
+    cleanup_thread = threading.Thread(target=delayed_cleanup, daemon=True)
+    cleanup_thread.start()
+    print(f"Scheduled expired files cleanup in {delay_minutes} minutes")
 
 def convert_docx_to_html(docx_path):
     """Convert DOCX file to HTML for preview"""
@@ -274,12 +351,12 @@ def upload_question_image():
         if not question_id:
             return jsonify({"error": "Question ID is required"}), 400
         
-        # Check if file is an image
-        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+        # Check if file is an image (PNG or JPEG only)
+        allowed_extensions = {'png', 'jpg', 'jpeg'}
         file_extension = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-        
+
         if file_extension not in allowed_extensions:
-            return jsonify({"error": "Invalid file format. Please upload an image file"}), 400
+            return jsonify({"error": "Invalid file format. Please upload PNG or JPEG images only"}), 400
         
         # Create secure filename
         original_filename = secure_filename(file.filename)
@@ -292,10 +369,8 @@ def upload_question_image():
         file_path = os.path.join(images_dir, filename)
         file.save(file_path)
         
-        # Register file for cleanup
-        file_registry[file_path] = time.time()
-        cleanup_thread = threading.Thread(target=cleanup_file_after_delay, args=(file_path,))
-        cleanup_thread.start()
+        # Note: Images are cleaned up in bulk 5 minutes after exam generation
+        # Individual image tracking is no longer needed
         
         return jsonify({
             "success": True, 
@@ -451,15 +526,10 @@ def generate():
         register_file_for_cleanup(exam_path)
         register_file_for_cleanup(key_path)
         
-        # Register used images for cleanup after a delay (so they don't get cleaned up immediately)
-        for image_filename in images_used:
-            # Use absolute path like in formatter.py
-            template_dir = os.path.join(os.path.dirname(__file__), "processing", "templates")
-            image_path = os.path.join(template_dir, "images", image_filename)
-            if os.path.exists(image_path):
-                register_file_for_cleanup(image_path, delay_minutes=5)  # Clean up images after 5 minutes
-        # Remove HTML preview generation and related fields
-        cleanup_expired_files()
+        # Schedule bulk cleanup of all images using FILE_EXPIRY_MINUTES
+        cleanup_images_folder_after_delay()
+        # Schedule cleanup of expired files using FILE_EXPIRY_MINUTES
+        cleanup_expired_files_after_delay()
         response_data = {
             "exam_url": f"/download/{os.path.basename(exam_path)}",
             "key_url": f"/download/{os.path.basename(key_path)}",
@@ -542,6 +612,35 @@ def cleanup_session_files(session_id):
         })
     except Exception as e:
         return jsonify({"error": f"Failed to delete files: {str(e)}"}), 500
+
+@app.route("/cleanup-images", methods=["DELETE"])
+def cleanup_images_immediately():
+    """Manually trigger immediate cleanup of all images"""
+    try:
+        images_dir = os.path.join("processing", "templates", "images")
+        deleted_count = 0
+        deleted_files = []
+        
+        if os.path.exists(images_dir):
+            for filename in os.listdir(images_dir):
+                file_path = os.path.join(images_dir, filename)
+                if os.path.isfile(file_path):
+                    try:
+                        os.remove(file_path)
+                        deleted_files.append(filename)
+                        deleted_count += 1
+                        # Remove from registry if it exists
+                        if file_path in file_registry:
+                            del file_registry[file_path]
+                    except Exception as e:
+                        print(f"Error removing image {filename}: {e}")
+        
+        return jsonify({
+            "message": f"Deleted {deleted_count} image files",
+            "deleted_files": deleted_files
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to cleanup images: {str(e)}"}), 500
 
 @app.route("/debug/files")
 def debug_files():
@@ -701,7 +800,40 @@ def download_default_word_template():
 def create_similarity_session():
     """Create a new similarity analysis session"""
     try:
+        # Get client IP for rate limiting
+        client_ip = request.remote_addr or 'unknown'
+        current_time = time.time()
+        
+        print(f"Session creation request from {client_ip} at {current_time}")
+        
+        # Check for rapid session creation from same IP
+        if client_ip in recent_sessions:
+            time_since_last = current_time - recent_sessions[client_ip]
+            print(f"Last session from {client_ip} was {time_since_last:.2f} seconds ago")
+            if time_since_last < SESSION_CREATION_COOLDOWN:
+                wait_time = SESSION_CREATION_COOLDOWN - time_since_last
+                print(f"Rate limiting triggered for {client_ip}, wait_time: {wait_time:.2f}s")
+                return jsonify({
+                    "success": False,
+                    "error": "rate_limit",
+                    "message": f"Please wait {wait_time:.1f} seconds before creating another session",
+                    "wait_time": wait_time,
+                    "retry_after": wait_time
+                }), 429
+        
+        # Update recent sessions tracking
+        recent_sessions[client_ip] = current_time
+        print(f"Updated recent_sessions for {client_ip}")
+        
+        # Clean up old entries (older than 5 minutes)
+        cutoff_time = current_time - 300  # 5 minutes
+        recent_sessions_cleaned = {ip: timestamp for ip, timestamp in recent_sessions.items() 
+                          if timestamp > cutoff_time}
+        recent_sessions.clear()
+        recent_sessions.update(recent_sessions_cleaned)
+        
         session_id = similarity_analyzer.create_session()
+        print(f"Successfully created session: {session_id}")
         return jsonify({
             "success": True,
             "session_id": session_id,
@@ -709,7 +841,7 @@ def create_similarity_session():
         }), 200
     except Exception as e:
         print(f"Error creating similarity session: {str(e)}")
-        return jsonify({"error": f"Failed to create session: {str(e)}"}), 500
+        return jsonify({"success": False, "error": f"Failed to create session: {str(e)}"}), 500
 
 @app.route('/api/similarity/upload/<session_id>', methods=['POST'])
 def upload_similarity_files(session_id):
@@ -837,6 +969,35 @@ def cleanup_all_similarity_sessions():
     except Exception as e:
         print(f"Error cleaning up all sessions: {str(e)}")
         return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+
+@app.route('/api/similarity/cleanup-empty', methods=['DELETE'])
+def cleanup_empty_similarity_sessions():
+    """Clean up empty similarity sessions immediately"""
+    try:
+        if not os.path.exists(similarity_analyzer.temp_base_dir):
+            return jsonify({"success": True, "cleaned_sessions": 0, "message": "No sessions to clean"}), 200
+        
+        cleaned_count = 0
+        for session_folder in os.listdir(similarity_analyzer.temp_base_dir):
+            if session_folder.startswith("similarity_"):
+                session_path = os.path.join(similarity_analyzer.temp_base_dir, session_folder)
+                if os.path.isdir(session_path):
+                    # Check if session has no uploaded files
+                    uploaded_files_path = os.path.join(session_path, "uploaded_files")
+                    if os.path.exists(uploaded_files_path):
+                        uploaded_files = [f for f in os.listdir(uploaded_files_path) if f.endswith('.docx')]
+                        if len(uploaded_files) == 0:
+                            if similarity_analyzer.cleanup_session(session_folder):
+                                cleaned_count += 1
+                                print(f"Cleaned up empty session: {session_folder}")
+        
+        return jsonify({
+            "success": True,
+            "cleaned_sessions": cleaned_count,
+            "message": f"Cleaned up {cleaned_count} empty sessions"
+        }), 200
+    except Exception as e:
+        return jsonify({"error": f"Empty session cleanup failed: {str(e)}"}), 500
 
 @app.route('/api/similarity/status', methods=['GET'])
 def similarity_system_status():

@@ -801,6 +801,54 @@ function PreviewPageContent() {
               </Button>
             </Box>
           )}
+
+          {/* Navigation Buttons */}
+          <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mt: 4}}>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                window.location.href = '/';
+              }}
+              sx={{
+                height: "50px",
+                px: 4,
+                borderRadius: "10px",
+                borderColor: "#1e3a8a",
+                color: "#1e3a8a",
+                fontSize: "1rem",
+                fontWeight: 600,
+                "&:hover": {
+                  backgroundColor: "#f0f9ff",
+                  borderColor: "#1e40af",
+                  color: "#1e40af",
+                },
+              }}
+            >
+              Back to Home
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => {
+                window.location.href = '/home';
+              }}
+              sx={{
+                height: "50px",
+                px: 4,
+                borderRadius: "10px",
+                borderColor: "#1e3a8a",
+                color: "#1e3a8a",
+                fontSize: "1rem",
+                fontWeight: 600,
+                "&:hover": {
+                  backgroundColor: "#f0f9ff",
+                  borderColor: "#1e40af",
+                  color: "#1e40af",
+                },
+              }}
+            >
+              Upload Excel Again
+            </Button>
+          </Box>
         </Box>
 
         {/* Snackbar for notifications */}
