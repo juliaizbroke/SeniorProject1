@@ -15,14 +15,19 @@ export async function testApiConnection(): Promise<boolean> {
 }
 
 export async function uploadExcel(file: File): Promise<UploadResponse> {
+  console.log("uploadExcel called with file:", file.name, "API_BASE_URL:", API_BASE_URL);
   const formData = new FormData();
   formData.append('file', file);
+  console.log("FormData created, about to fetch:", `${API_BASE_URL}/upload`);
 
   try {
+    console.log("About to start fetch call...");
     const response = await fetch(`${API_BASE_URL}/upload`, {
       method: 'POST',
       body: formData,
     });
+
+    console.log("Fetch response received:", response.status, response.statusText);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -33,6 +38,12 @@ export async function uploadExcel(file: File): Promise<UploadResponse> {
     return response.json();
   } catch (error) {
     console.error('Network error during upload:', error);
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Upload timeout: Request took longer than 30 seconds');
+      }
+      console.error('Error details:', error.message, error.stack);
+    }
     throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

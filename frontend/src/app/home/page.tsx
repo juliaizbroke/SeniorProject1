@@ -172,8 +172,13 @@ export default function HomePage() {
   });
 
   const handleUpload = async () => {
-    if (!selectedFile) return;
+    console.log("handleUpload called, selectedFile:", selectedFile);
+    if (!selectedFile) {
+      console.log("No file selected, returning");
+      return;
+    }
     try {
+      console.log("Starting upload process...");
       setLoading(true);
       setError("");
       
@@ -183,6 +188,7 @@ export default function HomePage() {
         'Reading questions and validating format...'
       );
       
+      console.log("About to call uploadExcel with file:", selectedFile.name);
       const response: UploadResponse = await uploadExcel(selectedFile);
       localStorage.setItem("questions", JSON.stringify(response.questions));
       localStorage.setItem("metadata", JSON.stringify(response.metadata));

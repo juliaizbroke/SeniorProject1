@@ -25,6 +25,9 @@ except ImportError:
     print("Warning: mammoth not available. HTML preview will be disabled.")
 
 app = Flask(__name__)
+# Set max upload file size to 100MB to avoid silent failures
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000", 
@@ -266,6 +269,9 @@ def health_check():
 
 @app.route("/upload", methods=["POST"])
 def upload():
+    print(f"[DEBUG] Upload route called - Method: {request.method}")
+    print(f"[DEBUG] Request files: {list(request.files.keys())}")
+    print(f"[DEBUG] Request form: {dict(request.form)}")
     try:
         if 'file' not in request.files:
             return jsonify({"error": "No file part in the request"}), 400
@@ -290,7 +296,13 @@ def upload():
         if not 0.0 <= similarity_threshold <= 1.0:
             return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
         
+        print(f"[DEBUG] About to parse Excel file: {file.filename}")
+        print(f"[DEBUG] Settings - remove_duplicates: {remove_duplicates}, threshold: {similarity_threshold}, check_grammar: {check_grammar}")
+        
         questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold, check_grammar=check_grammar)
+        
+        print(f"[DEBUG] Excel parsing completed. Found {len(questions)} questions")
+        
         # If we removed duplicates, we still want annotation info on returned list for UI clarity.
         if remove_duplicates:
             try:
