@@ -25,7 +25,8 @@ Before running the application, please install:
 #### For Windows:
 1. Open Command Prompt
 2. Navigate to the project folder: `cd C:\path\to\SeniorProject1`
-3. Double-click `setup-and-run.bat` or run: `setup-and-run.bat`
+3. If this is your first time running this script, double-click `setup-and-run.bat` or run: `setup-and-run.bat`
+4. If you have run the `setup-and-run.bat` script before, just run: `quick-start.bat`
 
 The script will:
 - ✅ Check if Python and Node.js are installed
@@ -39,25 +40,22 @@ If the automatic script doesn't work, you can run these commands manually:
 
 ```bash
 # bash
-# 1. Install Python dependencies
+
+# Terminal 1: Start backend
 cd backend
-python3 -m venv venv
-source venv/bin/activate
-# On Windows: source venv\\Scripts\\activate
-pip install -r requirements.txt
+source venv/bin/activate  # Windows: source venv\\Scripts\\activate
+python app.py
 
-# 2. Install Node.js dependencies and build
-cd ../frontend
-npm install
-npm run build
-
-# 3. Start the application
-npm run electron
+# Terminal 2: Start frontend
+cd frontend
+npm run dev
+# or
+pnpm run dev
 ```
 
 ## 📱 Using the Application
 
-Once the application starts, you'll see a desktop window with the Exam Generator interface.
+Once the application starts, you'll see a browser window with the Exam Generator interface.
 
 ### Features:
 - 📄 **Upload Excel files** with question banks
@@ -86,25 +84,7 @@ SeniorProject1/
 └── README.md         # This file
 ```
 
-## 🛠️ For Developers
-
-### Development Mode
-```bash
-# Terminal 1: Start backend
-cd backend
-source venv/bin/activate  # Windows: venv\Scripts\activate
-python app.py
-
-# Terminal 2: Start frontend
-cd frontend
-npm run dev
-
-# Terminal 3: Start Electron (optional)
-cd frontend
-npm run electron-dev
-```
-
-### Building for Distribution
+<!-- ### Building for Distribution
 ```bash
 cd frontend
 npm run dist
@@ -113,7 +93,7 @@ npm run dist
 This creates installers in `frontend/dist-electron/`:
 - `.dmg` file for Mac
 - `.exe` installer for Windows
-- `.AppImage` for Linux
+- `.AppImage` for Linux -->
 
 ## 🐛 Troubleshooting
 
@@ -161,5 +141,6 @@ If you encounter any issues:
 ---
 
 **Version:** 1.0.0  
-**Built with:** Electron, Next.js, Python Flask  
+<!-- **Built with:** Electron, Next.js, Python Flask   -->
+**Built with:** Next.js, Python Flask  
 **License:** Academic Use

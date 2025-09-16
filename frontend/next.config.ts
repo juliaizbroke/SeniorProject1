@@ -18,9 +18,7 @@ const nextConfig: NextConfig = {
     ],
   },
   env: {
-    NEXT_PUBLIC_BACKEND_URL: process.env.NODE_ENV === 'production' 
-      ? 'http://localhost:5001' 
-      : 'http://localhost:5001'
+    NEXT_PUBLIC_BACKEND_URL: 'http://localhost:5001'
   },
   // Skip API routes during static export
   ...(isElectron && {
