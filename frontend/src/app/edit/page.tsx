@@ -324,10 +324,14 @@ export default function EditPage() {
                 variant="caption"
                 sx={{ color: '#333', fontStyle: 'italic', maxWidth: '300px', textAlign: 'right' }}
               >
-                Review your questions and proceed to preview the exam structure before generating the final documents.
+                {duplicateSummary.count > 0 
+                  ? 'Please resolve all duplicate question groups before proceeding to preview.'
+                  : 'Review your questions and proceed to preview the exam structure before generating the final documents.'
+                }
               </Typography>
               <Button
                 variant="contained"
+                disabled={duplicateSummary.count > 0}
                 onClick={() => {
                   // Just navigate to preview page without generating files yet
                   router.push('/preview');
@@ -337,10 +341,15 @@ export default function EditPage() {
                   flexShrink: 0,
                   borderRadius: '10px',
                   border: '1px solid #1e3a8a',
-                  backgroundColor: '#1e3a8a',
-                  color: 'white',
+                  backgroundColor: duplicateSummary.count > 0 ? '#94a3b8' : '#1e3a8a',
+                  color: duplicateSummary.count > 0 ? '#64748b' : 'white',
                   '&:hover': {
-                    backgroundColor: '#1e40af',
+                    backgroundColor: duplicateSummary.count > 0 ? '#94a3b8' : '#1e40af',
+                  },
+                  '&:disabled': {
+                    border: '1px solid #94a3b8',
+                    backgroundColor: '#94a3b8',
+                    color: '#64748b',
                   },
                 }}
               >

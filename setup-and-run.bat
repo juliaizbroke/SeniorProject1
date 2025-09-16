@@ -141,7 +141,9 @@ REM Start backend in a new command window
 start "Backend Server" cmd /k "cd /d "%CD%\backend" && call venv\Scripts\activate.bat && set PORT=5001 && %PYTHON_CMD% app.py"
 
 REM Start frontend in a new command window
-start "Frontend Server" cmd /k "cd /d "%CD%\frontend" && npm run dev -- --port 3000"REM Wait for services to start up
+start "Frontend Server" cmd /k "cd /d "%CD%\frontend" && npm run dev -- --port 3000"
+
+REM Wait for services to start up
 echo [INFO] Waiting for services to start (15 seconds)...
 timeout /t 15 >nul
 

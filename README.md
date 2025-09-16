@@ -38,10 +38,12 @@ The script will:
 If the automatic script doesn't work, you can run these commands manually:
 
 ```bash
+# bash
 # 1. Install Python dependencies
 cd backend
 python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate
+# On Windows: source venv\\Scripts\\activate
 pip install -r requirements.txt
 
 # 2. Install Node.js dependencies and build
