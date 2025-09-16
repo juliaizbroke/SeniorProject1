@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Button, Typography, Container, Grid, Paper } from "@mui/material";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
@@ -8,7 +9,7 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import FindInPageIcon from '@mui/icons-material/FindInPage';
 
 export default function LandingPage() {
-  // const router = useRouter(); // Using Link components instead
+  const router = useRouter();
 
   return (
     <Box sx={{ bgcolor: '#f8fafc', minHeight: '100vh', color: '#222' }}>
@@ -77,7 +78,7 @@ export default function LandingPage() {
             <Button
               variant="contained"
               size="large"
-              onClick={() => '/home'}
+              onClick={() => router.push('/home')}
               sx={{
                 bgcolor: "#1e3a8a",
                 color: "#fff",

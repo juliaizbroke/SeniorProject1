@@ -96,7 +96,22 @@ call venv\Scripts\activate.bat
 REM Upgrade pip and install packages
 echo [INFO] Upgrading pip and installing Python packages...
 python -m pip install --upgrade pip
-pip install -r requirements.txt
+
+REM Check Python version and use appropriate requirements file
+python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" > python_version.txt
+set /p PYTHON_VERSION=<python_version.txt
+del python_version.txt
+
+echo [INFO] Detected Python version: %PYTHON_VERSION%
+
+REM Use compatible requirements based on Python version
+if "%PYTHON_VERSION%" == "3.13" (
+    echo [INFO] Using Python 3.13 compatible requirements...
+    pip install -r requirements-py313.txt
+) else (
+    echo [INFO] Using original requirements...
+    pip install -r requirements.txt
+)
 
 echo [SUCCESS] Backend ready.
 
@@ -123,20 +138,18 @@ REM Navigate back to project root
 cd ..
 
 REM Start backend in a new command window
-start "Backend Server" cmd /k "cd /d "%CD%\backend" && call venv\Scripts\activate.bat && set PORT=5000 && %PYTHON_CMD% app.py"
+start "Backend Server" cmd /k "cd /d "%CD%\backend" && call venv\Scripts\activate.bat && set PORT=5001 && %PYTHON_CMD% app.py"
 
-REM Start frontend in a new command window  
-start "Frontend Server" cmd /k "cd /d "%CD%\frontend" && npm run start"
-
-REM Wait for services to start up
+REM Start frontend in a new command window
+start "Frontend Server" cmd /k "cd /d "%CD%\frontend" && npm run dev -- --port 3000"REM Wait for services to start up
 echo [INFO] Waiting for services to start (15 seconds)...
 timeout /t 15 >nul
 
 REM Try to verify services are running
 echo [INFO] Checking if services are running...
-curl -s http://localhost:5000/ >nul 2>&1
+curl -s http://localhost:5001/ >nul 2>&1
 if %errorlevel% equ 0 (
-    echo [SUCCESS] Backend is responding on port 5000
+    echo [SUCCESS] Backend is responding on port 5001
 ) else (
     echo [WARNING] Backend might not be fully started yet
 )
@@ -150,13 +163,16 @@ if %errorlevel% equ 0 (
 
 REM Open browser regardless of curl check (curl might not be available)
 echo [INFO] Opening browser...
-start http://localhost:3000
+start "" http://localhost:3000
 
 echo.
 echo [SUCCESS] Setup complete! Backend and frontend are running.
 echo.
 echo The application should be available at: http://localhost:3000
-echo Backend API is running at: http://localhost:5000
+echo Backend API is running at: http://localhost:5001
+echo.
+echo [BROWSER] If browser didn't open automatically, manually go to:
+echo          http://localhost:3000
 echo.
 echo Note: It may take a few moments for the applications to start fully.
 echo If localhost:3000 shows connection refused, wait a bit longer and refresh.

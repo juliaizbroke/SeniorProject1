@@ -1,0 +1,13 @@
+@echo off
+REM Backend startup script with proper virtual environment activation
+cd /d "%~dp0backend"
+echo Activating virtual environment...
+call venv\Scripts\activate.bat
+echo Checking Python path...
+python -c "import sys; print('Python executable:', sys.executable)"
+echo Checking if Flask is available...
+python -c "import flask; print('Flask version:', flask.__version__)" 2>nul || echo "Flask not found!"
+echo Starting Flask application...
+set PORT=5001
+python app.py
+pause
