@@ -280,6 +280,7 @@ def upload():
         # Get duplicate detection settings from form data or use defaults.
         # Default now is to NOT remove duplicates; we only annotate unless explicitly requested.
         remove_duplicates = request.form.get('removeDuplicates', 'false').lower() == 'true'
+        check_duplicates = request.form.get('checkDuplicates', 'true').lower() == 'true'
         similarity_threshold = float(request.form.get('similarityThreshold', '0.8'))
         
         # Get grammar checking setting from form data (default is true)
@@ -289,7 +290,7 @@ def upload():
         if not 0.0 <= similarity_threshold <= 1.0:
             return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
         
-        questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold, check_grammar=check_grammar)
+        questions, metadata = parse_excel(file, remove_duplicates=remove_duplicates, similarity_threshold=similarity_threshold, check_duplicates=check_duplicates, check_grammar=check_grammar)
         # If we removed duplicates, we still want annotation info on returned list for UI clarity.
         if remove_duplicates:
             try:

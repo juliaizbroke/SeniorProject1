@@ -14,9 +14,21 @@ export async function testApiConnection(): Promise<boolean> {
   }
 }
 
-export async function uploadExcel(file: File): Promise<UploadResponse> {
+export async function uploadExcel(
+  file: File,
+  options?: {
+    enableDuplicateDetection?: boolean;
+    enableGrammarChecking?: boolean;
+  }
+): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
+  
+  // Add processing options if provided
+  if (options) {
+    formData.append('checkDuplicates', options.enableDuplicateDetection ? 'true' : 'false');
+    formData.append('checkGrammar', options.enableGrammarChecking ? 'true' : 'false');
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/upload`, {

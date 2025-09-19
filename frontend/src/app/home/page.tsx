@@ -20,6 +20,9 @@ import {
   Paper,
   Card,
   CardContent,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
 } from "@mui/material";
 import { useDropzone } from 'react-dropzone';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -64,6 +67,10 @@ export default function HomePage() {
   
   // Processing modal state
   const { processingState, startProcessing, stopProcessing } = useProcessing();
+  
+  // Processing options state
+  const [enableDuplicateDetection, setEnableDuplicateDetection] = useState<boolean>(true);
+  const [enableGrammarChecking, setEnableGrammarChecking] = useState<boolean>(true);
   
   const router = useRouter();
 
@@ -184,7 +191,10 @@ export default function HomePage() {
         'Reading questions and validating format...'
       );
       
-      const response: UploadResponse = await uploadExcel(selectedFile);
+      const response: UploadResponse = await uploadExcel(selectedFile, {
+        enableDuplicateDetection,
+        enableGrammarChecking,
+      });
       localStorage.setItem("questions", JSON.stringify(response.questions));
       localStorage.setItem("metadata", JSON.stringify(response.metadata));
       localStorage.setItem("sessionId", response.session_id);
@@ -623,6 +633,65 @@ export default function HomePage() {
                     </Box>
                   )}
                 </Paper>
+              </Box>
+
+              {/* Processing Options */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="h6" sx={{ color: "#1a1a1a", fontWeight: 600, mb: 2 }}>
+                  Processing Options
+                </Typography>
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={enableDuplicateDetection}
+                        onChange={(e) => setEnableDuplicateDetection(e.target.checked)}
+                        sx={{
+                          color: '#059669',
+                          '&.Mui-checked': {
+                            color: '#059669',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#1a1a1a' }}>
+                          Enable Duplicate Detection
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#666', fontSize: '13px' }}>
+                          Detect and highlight duplicate questions during processing
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ mb: 1, alignItems: 'flex-start' }}
+                  />
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={enableGrammarChecking}
+                        onChange={(e) => setEnableGrammarChecking(e.target.checked)}
+                        sx={{
+                          color: '#059669',
+                          '&.Mui-checked': {
+                            color: '#059669',
+                          },
+                        }}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography variant="body1" sx={{ fontWeight: 500, color: '#1a1a1a' }}>
+                          Enable Grammar Checking
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#666', fontSize: '13px' }}>
+                          Check and correct grammar errors in questions
+                        </Typography>
+                      </Box>
+                    }
+                    sx={{ alignItems: 'flex-start' }}
+                  />
+                </FormGroup>
               </Box>
 
               {/* Upload Button */}

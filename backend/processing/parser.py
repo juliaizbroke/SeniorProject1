@@ -28,7 +28,7 @@ def format_time(time_str):
     except:
         return time_str
 
-def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_grammar=True):
+def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_duplicates=True, check_grammar=True):
     """
     Parse Excel file and extract questions with optional duplicate detection and grammar checking.
     
@@ -36,6 +36,7 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_g
         file: Excel file object
         remove_duplicates: Whether to remove duplicate questions
         similarity_threshold: Threshold for similarity detection (0.0-1.0)
+        check_duplicates: Whether to perform duplicate detection (annotation only)
         check_grammar: Whether to perform grammar checking on questions
     """
     xls = pd.ExcelFile(file)
@@ -180,7 +181,7 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_g
         })
 
     # ---- Apply Duplicate Detection ----
-    if all_questions:
+    if all_questions and check_duplicates:
         try:
             detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
             original_count = len(all_questions)
@@ -216,6 +217,12 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_g
                 "enabled": False,
                 "error": str(e)
             }
+    elif all_questions and not check_duplicates:
+        # Duplicate detection is disabled
+        metadata["duplicate_detection"] = {
+            "enabled": False,
+            "mode": "disabled"
+        }
 
     # ---- Apply Grammar Checking ----
     if all_questions and check_grammar:
