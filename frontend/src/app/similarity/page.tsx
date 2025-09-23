@@ -39,6 +39,7 @@ import {
   CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import Navbar from '../../components/Navbar';
+import Footer from '../../components/Footer';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -1179,6 +1180,7 @@ export default function SimilarityPage() {
         )}
       </Container>
       </Box>
+      <Footer />
     </Box>
   );
 }

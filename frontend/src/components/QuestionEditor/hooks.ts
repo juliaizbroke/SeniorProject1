@@ -29,11 +29,11 @@ export const useQuestionEditor = (
     
     if (question.type.toLowerCase() === 'multiple choice') {
       contentParts.push(
-        `a:${question.a?.trim() || 'empty_a'}`,
-        `b:${question.b?.trim() || 'empty_b'}`,
-        `c:${question.c?.trim() || 'empty_c'}`,
-        `d:${question.d?.trim() || 'empty_d'}`,
-        `e:${question.e?.trim() || 'empty_e'}`
+        `a:${typeof question.a === 'string' ? question.a.trim() : 'empty_a'}`,
+        `b:${typeof question.b === 'string' ? question.b.trim() : 'empty_b'}`,
+        `c:${typeof question.c === 'string' ? question.c.trim() : 'empty_c'}`,
+        `d:${typeof question.d === 'string' ? question.d.trim() : 'empty_d'}`,
+        `e:${typeof question.e === 'string' ? question.e.trim() : 'empty_e'}`
       );
     }
     
@@ -55,11 +55,11 @@ export const useQuestionEditor = (
     
     if (question.type.toLowerCase() === 'multiple choice') {
       contentParts.push(
-        `a:${question.a?.trim() || 'empty_a'}`,
-        `b:${question.b?.trim() || 'empty_b'}`,
-        `c:${question.c?.trim() || 'empty_c'}`,
-        `d:${question.d?.trim() || 'empty_d'}`,
-        `e:${question.e?.trim() || 'empty_e'}`
+        `a:${typeof question.a === 'string' ? question.a.trim() : 'empty_a'}`,
+        `b:${typeof question.b === 'string' ? question.b.trim() : 'empty_b'}`,
+        `c:${typeof question.c === 'string' ? question.c.trim() : 'empty_c'}`,
+        `d:${typeof question.d === 'string' ? question.d.trim() : 'empty_d'}`,
+        `e:${typeof question.e === 'string' ? question.e.trim() : 'empty_e'}`
       );
     }
     

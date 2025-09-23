@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import CategorySelection from "../../components/CategorySelection";
 import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 import { Question, QuestionMetadata } from "../../types";
 
 export default function CategoryPage() {
@@ -221,6 +222,7 @@ export default function CategoryPage() {
         </Snackbar>
         </Box>
       </Box>
+      <Footer />
     </Box>
   );
 }

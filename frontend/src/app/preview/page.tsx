@@ -17,6 +17,7 @@ import {
   Alert,
 } from "@mui/material";
 import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 import { getDownloadUrl, generateExam } from "../../utils/api";
 import { QuestionMetadata, Question, GenerateResponse } from "../../types";
@@ -868,6 +869,7 @@ function PreviewPageContent() {
         </Snackbar>
         </Box>
       </Box>
+      <Footer />
     </Box>
   );
 }

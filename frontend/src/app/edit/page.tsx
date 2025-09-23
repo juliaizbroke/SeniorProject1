@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import QuestionEditor from "../../components/QuestionEditor";
 import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 import { Question, QuestionMetadata } from "../../types";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
@@ -374,6 +375,7 @@ export default function EditPage() {
           </Snackbar>
         </Box>
       </Box>
+      <Footer />
     </Box>
   );
 }

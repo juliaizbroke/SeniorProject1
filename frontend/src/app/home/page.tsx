@@ -34,6 +34,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
 import ProcessingModal from "../../components/ProcessingModal";
 import { useProcessing } from "../../hooks/useProcessing";
 import { uploadExcel } from "../../utils/api";
@@ -1003,6 +1004,8 @@ export default function HomePage() {
         title={processingState.title}
         subtitle={processingState.subtitle}
       />
+      
+      <Footer />
     </Box>
   );
 }

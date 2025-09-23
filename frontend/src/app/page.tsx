@@ -2,7 +2,9 @@
 
 import { Box, Button, Typography, Container, Grid, Paper } from "@mui/material";
 import { useRouter } from "next/navigation";
+import Image from 'next/image';
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -34,9 +36,15 @@ export default function LandingPage() {
           }}
         >
         <Box className="fade-in" sx={{ width: "100%" }}>
-          <Typography variant="h1" fontWeight={800} sx={{ mb: 3, color: "#1a1a1a", textAlign: "center", letterSpacing: -1, fontSize: { xs: '3rem', md: '4rem' } }}>
-            Aurex
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', mb: 3 }}>
+            <Image
+              src="/logo/aurex1.png"
+              alt="Aurex Logo"
+              width={300}
+              height={300}
+              style={{ width: 'auto', height: 'auto' }}
+            />
+          </Box>
           <Typography variant="h4" sx={{ mb: 4, color: "#1e3a8a", textAlign: "center", fontWeight: 600 }}>
             Smart • Secure • Effortless
           </Typography>
@@ -251,6 +259,7 @@ export default function LandingPage() {
         </Box>
       </Container>
       </Box>
+      <Footer />
     </Box>
   );
 }
