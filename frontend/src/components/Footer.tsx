@@ -21,17 +21,55 @@ const Footer: React.FC = () => {
             <Grid container spacing={2} justifyContent="center">
               <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
-                  <strong>Email:</strong><br />[your.email@university.edu]
+                  <strong>Email: </strong>
+                  <a
+                    href="mailto:u6530213@au.edu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Julia
+                  </a>, <a
+                    href="mailto:u6530203@au.edu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Desmond
+                  </a>, <a
+                    href="mailto:u6530207@au.edu"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                  >
+                    Harry
+                  </a>
                 </Typography>
               </Grid>
               <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
-                  <strong>GitHub:</strong><br />[github.com/your-repo]
+                  <strong>GitHub: </strong>
+                  <a
+                    href="https://github.com/juliaizbroke/SeniorProject1"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                  >
+                    View GitHub Repository
+                  </a>
                 </Typography>
               </Grid>
               <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" sx={{ lineHeight: 1.5 }}>
-                  <strong>Documentation:</strong><br />See User Manual
+                  <strong>Documentation: </strong>
+                  <a
+                    href="https://github.com/juliaizbroke/SeniorProject1/blob/master/Aurex%20Exam%20Generator%20-%20User%20Manual.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'inherit', textDecoration: 'underline' }}
+                  >
+                    See User Manual
+                  </a>
                 </Typography>
               </Grid>
             </Grid>
