@@ -42,7 +42,18 @@ export async function uploadExcel(
       throw new Error(`Failed to upload file: ${response.status} ${response.statusText}`);
     }
 
-    return response.json();
+    // Get the response as text first to handle potential NaN values
+    const responseText = await response.text();
+    
+    try {
+      // Replace any NaN values with null before parsing
+      const sanitizedText = responseText.replace(/:\s*NaN/g, ': null');
+      return JSON.parse(sanitizedText);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      console.error('Response text:', responseText);
+      throw new Error('Invalid response format from server');
+    }
   } catch (error) {
     console.error('Network error during upload:', error);
     throw new Error(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -71,7 +82,18 @@ export async function generateExam(data: GenerateRequest): Promise<GenerateRespo
     throw new Error('Failed to generate exam');
   }
 
-  return response.json();
+  // Get the response as text first to handle potential NaN values
+  const responseText = await response.text();
+  
+  try {
+    // Replace any NaN values with null before parsing
+    const sanitizedText = responseText.replace(/:\s*NaN/g, ': null');
+    return JSON.parse(sanitizedText);
+  } catch (parseError) {
+    console.error('JSON parse error:', parseError);
+    console.error('Response text:', responseText);
+    throw new Error('Invalid response format from server');
+  }
 }
 
 export function getDownloadUrl(path: string): string {
