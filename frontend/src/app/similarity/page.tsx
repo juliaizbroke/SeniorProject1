@@ -40,6 +40,7 @@ import {
 } from '@mui/icons-material';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import { primaryButtonStyles, BUTTON_TEXTS } from '../../utils/buttonStyles';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -864,25 +865,9 @@ export default function SimilarityPage() {
               variant="contained"
               size="large"
               onClick={resetAnalysis}
-              sx={{
-                  bgcolor: "#1e3a8a",
-                  color: "#fff",
-                  fontWeight: 700,
-                  px: 3,
-                  py: 1,
-                  fontSize: "1.3rem",
-                  borderRadius: 3,
-                  textTransform: "none",
-                  boxShadow: "0 6px 24px rgba(30,58,138,0.3)",
-                  transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
-                  '&:hover': {
-                    bgcolor: "#12264a",
-                    transform: "translateY(-3px)",
-                    boxShadow: "0 12px 40px rgba(18,38,74,0.4)",
-                  },
-                }}
+              sx={primaryButtonStyles}
             >
-              New Analysis
+              {BUTTON_TEXTS.NEW_ANALYSIS}
             </Button>
           </Box>
 
@@ -1145,24 +1130,15 @@ export default function SimilarityPage() {
             onClick={analyzeDocuments}
             disabled={uploadedFiles.length < 2 || isAnalyzing || uploadedFiles.some(f => f.status !== 'completed')}
             sx={{
-                  bgcolor: "#1e3a8a",
-                  color: "#fff",
-                  fontWeight: 700,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: "1.3rem",
-                  borderRadius: 3,
-                  textTransform: "none",
-                  boxShadow: "0 6px 24px rgba(30,58,138,0.3)",
-                  transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
-                  '&:hover': {
-                    bgcolor: "#12264a",
-                    transform: "translateY(-3px)",
-                    boxShadow: "0 12px 40px rgba(18,38,74,0.4)",
-                  },
-                }}
+              ...primaryButtonStyles,
+              '&:disabled': {
+                backgroundColor: '#94a3b8',
+                color: '#64748b',
+                boxShadow: 'none',
+              },
+            }}
           >
-            {isAnalyzing ? 'Analyzing...' : 'Analyze Similarity'}
+            {isAnalyzing ? 'Analyzing...' : BUTTON_TEXTS.ANALYZE_SIMILARITY}
           </Button>
           {isAnalyzing && analysisStep && (
             <Typography variant="body2" sx={{ mt: 2, color: '#666' }}>
@@ -1180,6 +1156,10 @@ export default function SimilarityPage() {
         )}
       </Container>
       </Box>
+      
+      {/* Spacer to separate content from footer */}
+      <Box sx={{ mb: 4 }} />
+      
       <Footer />
     </Box>
   );

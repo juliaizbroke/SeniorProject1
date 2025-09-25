@@ -23,6 +23,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 import SaveIcon from '@mui/icons-material/Save';
 import CancelIcon from '@mui/icons-material/Cancel';
 import PushPinIcon from '@mui/icons-material/PushPin';
+import { secondaryButtonStyles } from '../../utils/buttonStyles';
 import PushPinOutlinedIcon from '@mui/icons-material/PushPinOutlined';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -427,7 +428,7 @@ export default function RegularQuestion({
               variant="outlined"
               component="label"
               size="small"
-              sx={{ minWidth: '120px' }}
+              sx={{ ...secondaryButtonStyles, minWidth: '120px' }}
             >
               {(currentQuestion.uploaded_image_url || localImageData.uploaded_image_url) ? 'Change Image' : 'Upload Image'}
               <input

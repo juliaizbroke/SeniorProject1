@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from 'next/image';
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { primaryButtonStyles, BUTTON_TEXTS } from "../utils/buttonStyles";
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
@@ -87,23 +88,7 @@ export default function LandingPage() {
               variant="contained"
               size="large"
               onClick={() => router.push('/home')}
-              sx={{
-                bgcolor: "#1e3a8a",
-                color: "#fff",
-                fontWeight: 700,
-                px: 6,
-                py: 2,
-                fontSize: "1.2rem",
-                borderRadius: 2,
-                boxShadow: "0 4px 20px rgba(10,25,49,0.2)",
-                textTransform: "none",
-                transition: "transform 0.2s cubic-bezier(.4,0,.2,1), box-shadow 0.2s cubic-bezier(.4,0,.2,1)",
-                '&:hover': {
-                  bgcolor: "#12264a",
-                  transform: "scale(1.05)",
-                  boxShadow: "0 8px 32px rgba(18,38,74,0.25)",
-                },
-              }}
+              sx={primaryButtonStyles}
             >
               Let&apos;s Get Started!
             </Button>
@@ -233,32 +218,20 @@ export default function LandingPage() {
               <Button
                 variant="contained"
                 size="large"
-                onClick={() => window.location.href = '/similarity'}
-                sx={{
-                  bgcolor: "#1e3a8a",
-                  color: "#fff",
-                  fontWeight: 700,
-                  px: 8,
-                  py: 3,
-                  fontSize: "1.3rem",
-                  borderRadius: 3,
-                  textTransform: "none",
-                  boxShadow: "0 6px 24px rgba(30,58,138,0.3)",
-                  transition: "all 0.3s cubic-bezier(.4,0,.2,1)",
-                  '&:hover': {
-                    bgcolor: "#12264a",
-                    transform: "translateY(-3px)",
-                    boxShadow: "0 12px 40px rgba(18,38,74,0.4)",
-                  },
-                }}
+                onClick={() => router.push('/similarity')}
+                sx={primaryButtonStyles}
               >
-                Start Similarity Check
+                Check Similarity
               </Button>
             </Box>
           </Box>
         </Box>
       </Container>
       </Box>
+      
+      {/* Spacer to separate content from footer */}
+      <Box sx={{ mb: 4 }} />
+      
       <Footer />
     </Box>
   );

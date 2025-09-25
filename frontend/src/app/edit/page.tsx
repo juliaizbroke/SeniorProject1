@@ -14,6 +14,7 @@ import {
 import QuestionEditor from "../../components/QuestionEditor";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import { primaryButtonStyles, BUTTON_TEXTS } from "../../utils/buttonStyles";
 import { Question, QuestionMetadata } from "../../types";
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 export default function EditPage() {
@@ -338,23 +339,16 @@ export default function EditPage() {
                   router.push('/preview');
                 }}
                 sx={{
-                  height: '60px',
-                  flexShrink: 0,
-                  borderRadius: '10px',
-                  border: '1px solid #1e3a8a',
-                  backgroundColor: duplicateSummary.count > 0 ? '#94a3b8' : '#1e3a8a',
-                  color: duplicateSummary.count > 0 ? '#64748b' : 'white',
-                  '&:hover': {
-                    backgroundColor: duplicateSummary.count > 0 ? '#94a3b8' : '#1e40af',
-                  },
+                  ...primaryButtonStyles,
                   '&:disabled': {
-                    border: '1px solid #94a3b8',
                     backgroundColor: '#94a3b8',
                     color: '#64748b',
+                    boxShadow: 'none',
+                    cursor: 'not-allowed',
                   },
                 }}
               >
-                Continue to Preview
+                {BUTTON_TEXTS.CONTINUE_PREVIEW}
                 <TrendingFlatIcon sx={{ ml: 2 }} />
               </Button>
             </Box>
@@ -375,6 +369,10 @@ export default function EditPage() {
           </Snackbar>
         </Box>
       </Box>
+      
+      {/* Spacer to separate content from footer */}
+      <Box sx={{ mb: 4 }} />
+      
       <Footer />
     </Box>
   );

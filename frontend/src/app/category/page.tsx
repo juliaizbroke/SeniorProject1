@@ -81,13 +81,13 @@ export default function CategoryPage() {
             variant="h4"
             sx={{ color: "#1a1a1a", fontWeight: 700, mb: 2, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
           >
-            Select Categories
+            Edit Exam Metadata
           </Typography>
           <Typography
             variant="subtitle1"
             sx={{ color: "#666", fontWeight: 400, mb: 4, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
           >
-            Choose the number of questions from each category to include in your exam.
+            Edit the details of exam metadata as needed.
           </Typography>
           {hasDuplicates && (
             <Box sx={{
@@ -222,6 +222,10 @@ export default function CategoryPage() {
         </Snackbar>
         </Box>
       </Box>
+      
+      {/* Spacer to separate content from footer */}
+      <Box sx={{ mb: 4 }} />
+      
       <Footer />
     </Box>
   );
