@@ -1,6 +1,6 @@
-# 🎓 Exam Generator - Desktop Application
+# 🎓 Exam Generator - Web Application
 
-A desktop application for generating exam papers and answer keys with grammar checking and duplicate detection features.
+A modern web application for generating exam papers and answer keys with AI-powered grammar checking and duplicate detection features.
 
 ## 📋 Quick Start for Professors
 
@@ -31,8 +31,8 @@ Before running the application, please install:
 The script will:
 - ✅ Check if Python and Node.js are installed
 - ✅ Install all dependencies automatically
-- ✅ Build the application
-- ✅ Start the desktop application
+- ✅ Build the web application
+- ✅ Start the development server
 
 ### 🔧 Manual Setup (Alternative)
 

@@ -21,6 +21,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { Question } from '../../types';
+import { secondaryButtonStyles } from '../../utils/buttonStyles';
 
 interface DuplicateGroup {
   id: number;
@@ -272,7 +273,7 @@ export default function DuplicatePanel({
                           setSelectedGroup(group.id);
                           setShowMergeDialog(true);
                         }}
-                        sx={{ fontSize: '0.75rem' }}
+                        sx={{ ...secondaryButtonStyles, fontSize: '0.75rem' }}
                       >
                         Merge
                       </Button>
@@ -285,7 +286,7 @@ export default function DuplicatePanel({
                           setSelectedGroup(group.id);
                           setShowMergeDialog(true);
                         }}
-                        sx={{ fontSize: '0.75rem' }}
+                        sx={{ ...secondaryButtonStyles, fontSize: '0.75rem' }}
                       >
                         Replace
                       </Button>
@@ -294,7 +295,7 @@ export default function DuplicatePanel({
                         variant="outlined"
                         startIcon={<VisibilityOffIcon />}
                         onClick={() => handleIgnoreGroup(group.id)}
-                        sx={{ fontSize: '0.75rem' }}
+                        sx={{ ...secondaryButtonStyles, fontSize: '0.75rem' }}
                       >
                         Ignore
                       </Button>
@@ -364,7 +365,7 @@ export default function DuplicatePanel({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowMergeDialog(false)}>Cancel</Button>
+          <Button onClick={() => setShowMergeDialog(false)} sx={secondaryButtonStyles}>Cancel</Button>
         </DialogActions>
       </Dialog>
     </>

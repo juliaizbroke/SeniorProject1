@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import { primaryButtonStyles, secondaryButtonStyles, BUTTON_TEXTS } from "../../utils/buttonStyles";
 
 import { getDownloadUrl, generateExam } from "../../utils/api";
 import { QuestionMetadata, Question, GenerateResponse } from "../../types";
@@ -727,18 +728,11 @@ function PreviewPageContent() {
                 onClick={handleGenerate}
                 disabled={loading || !sessionId || !metadata}
                 sx={{
-                  height: "60px",
-                  px: 4,
-                  borderRadius: "10px",
-                  backgroundColor: "#1e3a8a",
-                  color: "white",
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  "&:hover": {
-                    backgroundColor: "#1e40af",
-                  },
-                  "&:disabled": {
-                    backgroundColor: "#9ca3af",
+                  ...primaryButtonStyles,
+                  '&:disabled': {
+                    backgroundColor: '#9ca3af',
+                    color: 'white',
+                    cursor: 'not-allowed',
                   },
                 }}
               >
@@ -749,7 +743,7 @@ function PreviewPageContent() {
                   </>
                 ) : (
                   <>
-                    Generate Paper
+                    {BUTTON_TEXTS.GENERATE_PAPER}
                     <TrendingFlatIcon sx={{ ml: 2 }} />
                   </>
                 )}
@@ -765,40 +759,18 @@ function PreviewPageContent() {
                 onClick={() => {
                   window.open(getDownloadUrl(downloadLinks.exam_url), '_blank');
                 }}
-                sx={{
-                  height: "60px",
-                  px: 4,
-                  borderRadius: "10px",
-                  backgroundColor: "#1e3a8a",
-                  color: "white",
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  "&:hover": {
-                    backgroundColor: "#1e40af",
-                  },
-                }}
+                sx={primaryButtonStyles}
               >
-                Download Exam Paper
+                {BUTTON_TEXTS.DOWNLOAD_EXAM}
               </Button>
               <Button
                 variant="contained"
                 onClick={() => {
                   window.open(getDownloadUrl(downloadLinks.key_url), '_blank');
                 }}
-                sx={{
-                  height: "60px",
-                  px: 4,
-                  borderRadius: "10px",
-                  backgroundColor: "#1e3a8a",
-                  color: "white",
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  "&:hover": {
-                    backgroundColor: "#1e40af",
-                  },
-                }}
+                sx={primaryButtonStyles}
               >
-                Download Answer Key
+                {BUTTON_TEXTS.DOWNLOAD_ANSWER}
               </Button>
             </Box>
           )}
@@ -810,44 +782,18 @@ function PreviewPageContent() {
               onClick={() => {
                 window.location.href = '/';
               }}
-              sx={{
-                height: "50px",
-                px: 4,
-                borderRadius: "10px",
-                borderColor: "#1e3a8a",
-                color: "#1e3a8a",
-                fontSize: "1rem",
-                fontWeight: 600,
-                "&:hover": {
-                  backgroundColor: "#f0f9ff",
-                  borderColor: "#1e40af",
-                  color: "#1e40af",
-                },
-              }}
+              sx={secondaryButtonStyles}
             >
-              Back to Home
+              {BUTTON_TEXTS.BACK_HOME}
             </Button>
             <Button
               variant="outlined"
               onClick={() => {
                 window.location.href = '/home';
               }}
-              sx={{
-                height: "50px",
-                px: 4,
-                borderRadius: "10px",
-                borderColor: "#1e3a8a",
-                color: "#1e3a8a",
-                fontSize: "1rem",
-                fontWeight: 600,
-                "&:hover": {
-                  backgroundColor: "#f0f9ff",
-                  borderColor: "#1e40af",
-                  color: "#1e40af",
-                },
-              }}
+              sx={secondaryButtonStyles}
             >
-              Upload Excel Again
+              {BUTTON_TEXTS.UPLOAD_AGAIN}
             </Button>
           </Box>
         </Box>
@@ -869,6 +815,10 @@ function PreviewPageContent() {
         </Snackbar>
         </Box>
       </Box>
+      
+      {/* Spacer to separate content from footer */}
+      <Box sx={{ mb: 4 }} />
+      
       <Footer />
     </Box>
   );

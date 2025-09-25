@@ -902,7 +902,7 @@ export default function HomePage() {
                     border: '1px solid #d1d5db',
                     borderRadius: '6px',
                     bgcolor: 'white',
-                    height: '205px', // Reduced height
+                    height: '400px', // Reduced height
                     overflowY: 'auto' // Scrollable content
                   }}
                 >
@@ -1004,6 +1004,9 @@ export default function HomePage() {
         title={processingState.title}
         subtitle={processingState.subtitle}
       />
+      
+      {/* Spacer to separate content from footer */}
+      <Box sx={{ mb: 4 }} />
       
       <Footer />
     </Box>

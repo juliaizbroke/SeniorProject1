@@ -26,6 +26,7 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { Question, QuestionMetadata } from '../types';
+import { primaryButtonStyles, secondaryButtonStyles } from '../utils/buttonStyles';
 
 interface CategorySelectionProps {
   questions: Question[];
@@ -234,8 +235,13 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
             fontWeight: 600 }}>
           Question Selection by Category
         </Typography>
-        
       </Box>
+      <Typography
+        variant="subtitle1"
+        sx={{ color: "#666", fontWeight: 400, mb: 4, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
+      >
+        Choose the number of questions from each category to include in your exam.
+      </Typography>
       
       {Object.entries(questionGroups).map(([type, categories]) => (
         <Accordion key={type} sx={{
@@ -398,12 +404,7 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
             onClick={handleApplyFilters}
             startIcon={<FilterAltIcon />}
             sx={{
-              backgroundColor: '#1e3a8a',
-              color: '#fff',
-              '&:hover': {
-                backgroundColor: '#3b5998',
-              },
-              borderRadius: '8px',
+              ...primaryButtonStyles,
               px: 3
             }}
           >
@@ -487,22 +488,16 @@ const CategorySelection: React.FC<CategorySelectionProps> = ({ questions, metada
         </DialogContent>
         <DialogActions>
           <Button 
-            onClick={() => setConfirmDialogOpen(false)} 
-            color="primary"
+            onClick={() => setConfirmDialogOpen(false)}
+            sx={secondaryButtonStyles}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleConfirmFilter} 
-            color="primary" 
             variant="contained"
             disabled={selectedQuestions.length === 0}
-            sx={{
-              backgroundColor: '#000',
-              '&:hover': {
-                backgroundColor: '#333',
-              }
-            }}
+            sx={primaryButtonStyles}
             autoFocus
           >
             Confirm
