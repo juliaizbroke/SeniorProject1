@@ -80,9 +80,9 @@ def test_duplicate_detector():
         logger.info("Testing duplicate detector...")
         
         # Import after models are set up
-        from processing.duplicate_detector import QuestionDuplicateDetector
+        from processing.optimized_duplicate_detector import OptimizedQuestionDuplicateDetector
         
-        detector = QuestionDuplicateDetector()
+        detector = OptimizedQuestionDuplicateDetector()
         
         # Test with sample questions
         test_questions = [

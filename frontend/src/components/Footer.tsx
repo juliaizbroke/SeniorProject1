@@ -9,7 +9,7 @@ const Footer: React.FC = () => {
         backgroundColor: '#1e3a8a',
         color: 'white',
         py: 3,
-        mt: 'auto',
+        mt: 4,
       }}
     >
       <Container maxWidth="lg">
