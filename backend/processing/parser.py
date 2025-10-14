@@ -4,7 +4,7 @@ import pandas as pd
 from io import BytesIO
 import datetime
 import os
-from .duplicate_detector import QuestionDuplicateDetector, annotate_duplicates_in_questions
+from .optimized_duplicate_detector import OptimizedQuestionDuplicateDetector, annotate_duplicates_in_questions_optimized
 from .grammar_checker import check_questions_grammar
 import logging
 
@@ -183,9 +183,12 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_d
     # ---- Apply Duplicate Detection ----
     if all_questions and check_duplicates:
         try:
-            detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
             original_count = len(all_questions)
+            
+            # Use optimized duplicate detection for better performance
             if remove_duplicates:
+                # Use optimized detector for removal mode
+                detector = OptimizedQuestionDuplicateDetector(similarity_threshold=similarity_threshold)
                 all_questions, removed_duplicates = detector.remove_duplicates(all_questions)
                 logging.info(f"Duplicate detection (removal): {original_count} -> {len(all_questions)} questions "
                              f"({len(removed_duplicates)} duplicates removed)")
@@ -199,8 +202,9 @@ def parse_excel(file, remove_duplicates=False, similarity_threshold=0.8, check_d
                     "removed_duplicates": removed_duplicates
                 }
             else:
-                all_questions, duplicate_info = detector.annotate_duplicates(all_questions)
-                logging.info(f"Duplicate detection (annotate): {duplicate_info['group_count']} duplicate groups; "
+                # Use optimized detection for annotation mode (most common)
+                all_questions, duplicate_info = annotate_duplicates_in_questions_optimized(all_questions, similarity_threshold)
+                logging.info(f"Optimized duplicate detection (annotate): {duplicate_info['group_count']} duplicate groups; "
                              f"{duplicate_info['duplicate_question_count']} questions involved")
                 metadata["duplicate_detection"] = {
                     "enabled": True,

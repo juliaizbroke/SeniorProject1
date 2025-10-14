@@ -294,8 +294,8 @@ def upload():
         # If we removed duplicates, we still want annotation info on returned list for UI clarity.
         if remove_duplicates:
             try:
-                from processing.duplicate_detector import QuestionDuplicateDetector
-                detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
+                from processing.optimized_duplicate_detector import OptimizedQuestionDuplicateDetector
+                detector = OptimizedQuestionDuplicateDetector(similarity_threshold=similarity_threshold)
                 questions, duplicate_info = detector.annotate_duplicates(questions)
                 metadata.setdefault("duplicate_detection", {})
                 metadata["duplicate_detection"]["post_removal_annotation"] = duplicate_info
@@ -469,10 +469,10 @@ def analyze_duplicates():
             return jsonify({"error": "Similarity threshold must be between 0.0 and 1.0"}), 400
         
         # Analyze duplicates
-        from processing.duplicate_detector import QuestionDuplicateDetector
-        detector = QuestionDuplicateDetector(similarity_threshold=similarity_threshold)
+        from processing.optimized_duplicate_detector import OptimizedQuestionDuplicateDetector
+        detector = OptimizedQuestionDuplicateDetector(similarity_threshold=similarity_threshold)
         
-        duplicate_groups = detector.find_duplicate_groups(questions)
+        duplicate_groups = detector.find_duplicate_groups_optimized(questions)
         
         # Format results for frontend
         duplicate_analysis = []
