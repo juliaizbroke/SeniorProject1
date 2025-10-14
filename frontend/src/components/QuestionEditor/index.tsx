@@ -150,29 +150,69 @@ export default function QuestionEditor({
   // Handle choosing one question from a duplicate group
   const handleChooseOne = (groupId: number, keepIndex: number) => {
     const updatedQuestions = [...questions];
-    const questionsToRemove = questions
+    
+    // Find the kept question to determine category
+    const keptQuestion = updatedQuestions[keepIndex];
+    const targetCategory = keptQuestion.category;
+    
+    // Get all questions in this duplicate group (except the kept one)
+    const duplicateIndexes = questions
       .map((q, index) => q.duplicate_group_id === groupId && index !== keepIndex ? index : -1)
-      .filter(index => index >= 0)
-      .sort((a, b) => b - a); // Remove from highest index first
+      .filter(index => index >= 0);
 
-    // Remove duplicate questions
-    questionsToRemove.forEach(index => {
-      updatedQuestions.splice(index, 1);
+    // Temporarily pin the kept question by adding it to locked questions
+    const keptQuestionId = getQuestionId(keptQuestion, keepIndex);
+    setLockedQuestions(prev => {
+      const newSet = new Set(prev);
+      newSet.add(keptQuestionId);
+      return newSet;
     });
 
-    // Clear duplicate flags from remaining question
-    const remainingQuestion = updatedQuestions.find(q => 
-      q.duplicate_group_id === groupId
+    // Create content hashes to avoid duplication
+    const currentQuestionHashes = new Set(
+      updatedQuestions.map(q => getContentHash(q))
     );
-    
-    if (remainingQuestion) {
-      remainingQuestion.is_duplicate = false;
-      remainingQuestion.duplicate_group_id = undefined;
-      remainingQuestion.duplicate_representative = false;
-      remainingQuestion.duplicate_similarity = undefined;
-    }
+
+    // Replace duplicate questions with random questions from the pool
+    duplicateIndexes.forEach(index => {
+      // Find available questions from the same category that aren't already in the exam
+      const availableQuestions = allQuestionsPool.filter(q => {
+        const contentHash = getContentHash(q);
+        return q.category === targetCategory && 
+               !currentQuestionHashes.has(contentHash) &&
+               q.type !== 'fake answer'; // Exclude fake answers
+      });
+      
+      if (availableQuestions.length > 0) {
+        // Pick a random replacement
+        const randomReplacement = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+        updatedQuestions[index] = randomReplacement;
+        
+        // Add the new question's hash to prevent selecting it again
+        currentQuestionHashes.add(getContentHash(randomReplacement));
+      }
+      // If no replacement available, keep the duplicate (shouldn't happen in normal cases)
+    });
+
+    // Clear duplicate flags from all questions in the group
+    updatedQuestions.forEach(q => {
+      if (q.duplicate_group_id === groupId) {
+        q.is_duplicate = false;
+        q.duplicate_group_id = undefined;
+        q.duplicate_representative = false;
+        q.duplicate_similarity = undefined;
+      }
+    });
 
     onQuestionsChange(updatedQuestions);
+    
+    // Unpin the kept question after replacement is done
+    setLockedQuestions(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(keptQuestionId);
+      return newSet;
+    });
+    
     setShowChooseDialog(false);
     setChooseAction(null);
   };
