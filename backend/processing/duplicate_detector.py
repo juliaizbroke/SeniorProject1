@@ -399,8 +399,6 @@ class QuestionDuplicateDetector:
         
         return score
     
-
-
 def annotate_duplicates_in_questions(questions: List[Dict],
                                      similarity_threshold: float = 0.8) -> Tuple[List[Dict], Dict]:
     """Convenience wrapper to annotate duplicate questions without removing them."""
