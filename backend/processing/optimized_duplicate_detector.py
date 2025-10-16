@@ -301,8 +301,11 @@ class OptimizedQuestionDuplicateDetector:
     
     def normalize_text(self, text: str) -> str:
         """Normalize text for comparison"""
-        if not text or not isinstance(text, str):
+        if not text:
             return ""
+        
+        # Force string conversion and handle None values
+        text = str(text) if text is not None else ""
         
         # Convert to lowercase
         text = text.lower().strip()
@@ -322,6 +325,9 @@ class OptimizedQuestionDuplicateDetector:
         """Extract meaningful keywords from text"""
         normalized = self.normalize_text(text)
         
+        if not normalized:
+            return set()
+        
         # Tokenize
         try:
             tokens = word_tokenize(normalized)
@@ -331,27 +337,33 @@ class OptimizedQuestionDuplicateDetector:
         # Remove stopwords and short words
         keywords = set()
         for token in tokens:
+            # Ensure token is string
+            token = str(token)
             if (len(token) > 2 and 
                 token not in self.stop_words and 
                 token not in string.punctuation):
                 # Add both original and stemmed version
                 keywords.add(token)
-                keywords.add(self.stemmer.stem(token))
+                try:
+                    keywords.add(self.stemmer.stem(token))
+                except:
+                    # If stemming fails, just add the original token
+                    keywords.add(token)
         
         return keywords
     
     def _extract_question_text(self, question: Dict) -> str:
         """Extract text content from question for comparison"""
-        text = question.get('question', '')
+        text = str(question.get('question', ''))
         
         # For multiple choice, include options
         if question.get('type') == 'multiple choice':
-            options = [question.get(opt, '') for opt in ['a', 'b', 'c', 'd', 'e'] if question.get(opt, '')]
+            options = [str(question.get(opt, '')) for opt in ['a', 'b', 'c', 'd', 'e'] if question.get(opt, '')]
             text += ' ' + ' '.join(options)
         
         # For written questions, include answer if significant
-        elif question.get('type') == 'written question' and len(question.get('answer', '')) > 20:
-            text += ' ' + question.get('answer', '')
+        elif question.get('type') == 'written question' and len(str(question.get('answer', ''))) > 20:
+            text += ' ' + str(question.get('answer', ''))
         
         return text
     
