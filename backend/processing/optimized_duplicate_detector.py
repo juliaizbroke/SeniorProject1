@@ -484,8 +484,8 @@ class OptimizedQuestionDuplicateDetector:
 
 
 def annotate_duplicates_in_questions_optimized(questions: List[Dict],
-                                             similarity_threshold: float = 0.6,
-                                             n_jobs: int = None) -> Tuple[List[Dict], Dict]:
+    similarity_threshold: float = 0.6,
+    n_jobs: int = None) -> Tuple[List[Dict], Dict]:
     """Optimized convenience wrapper to annotate duplicate questions."""
     detector = OptimizedQuestionDuplicateDetector(
         similarity_threshold=similarity_threshold, 
