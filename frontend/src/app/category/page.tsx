@@ -81,13 +81,13 @@ export default function CategoryPage() {
             variant="h4"
             sx={{ color: "#1a1a1a", fontWeight: 700, mb: 2, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
           >
-            Edit Exam Metadata
+            Edit Exam Information
           </Typography>
           <Typography
             variant="subtitle1"
             sx={{ color: "#666", fontWeight: 400, mb: 4, fontFamily: "var(--sds-typography-title-hero-font-family)" }}
           >
-            Edit the details of exam metadata as needed.
+            Edit the details of exam information as needed.
           </Typography>
           {hasDuplicates && (
             <Box sx={{
