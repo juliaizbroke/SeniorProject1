@@ -1,8 +1,8 @@
-# 🎓 Exam Generator - Web Application
+# Exam Generator - Web Application
 
 A modern web application for generating exam papers and answer keys with AI-powered grammar checking and duplicate detection features.
 
-## 📋 Quick Start for Professors
+## Quick Start for Professors
 
 ### Prerequisites
 Before running the application, please install:
@@ -15,7 +15,7 @@ Before running the application, please install:
    - Download from: https://nodejs.org
    - Choose the "LTS" (Long Term Support) version
 
-### 🚀 One-Click Setup & Run
+### One-Click Setup & Run
 
 #### For Mac/Linux:
 1. Open Terminal
@@ -29,12 +29,12 @@ Before running the application, please install:
 4. If you have run the `setup-and-run.bat` script before, just run: `quick-start.bat`
 
 The script will:
-- ✅ Check if Python and Node.js are installed
-- ✅ Install all dependencies automatically
-- ✅ Build the web application
-- ✅ Start the development server
+-  Check if Python and Node.js are installed
+-  Install all dependencies automatically
+-  Build the web application
+-  Start the development server
 
-### 🔧 Manual Setup (Alternative)
+###  Manual Setup (Alternative)
 
 If the automatic script doesn't work, you can run these commands manually:
 
@@ -53,18 +53,18 @@ npm run dev
 pnpm run dev
 ```
 
-## 📱 Using the Application
+##  Using the Application
 
 Once the application starts, you'll see a browser window with the Exam Generator interface.
 
 ### Features:
-- 📄 **Upload Excel files** with question banks
-- 🔍 **Grammar checking** with error highlighting
-- 🔄 **Duplicate detection** and management
-- ✏️ **Question editing** and customization
-- 📋 **Multiple question types**: Multiple choice, True/False, Matching, Written
-- 📑 **Generate Word documents** for exams and answer keys
-- 🖼️ **Image support** for questions
+-  **Upload Excel files** with question banks
+-  **Grammar checking** with error highlighting
+-  **Duplicate detection** and management
+-  **Question editing** and customization
+-  **Multiple question types**: Multiple choice, True/False, Matching, Written
+-  **Generate Word documents** for exams and answer keys
+-  **Image support** for questions
 
 ### Basic Workflow:
 1. **Upload** your Excel question bank file
@@ -73,7 +73,7 @@ Once the application starts, you'll see a browser window with the Exam Generator
 4. **Preview** your exam structure
 5. **Generate** final Word documents
 
-## 📁 File Structure
+##  File Structure
 
 ```
 SeniorProject1/
@@ -95,7 +95,7 @@ This creates installers in `frontend/dist-electron/`:
 - `.exe` installer for Windows
 - `.AppImage` for Linux -->
 
-## 🐛 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues:
 
@@ -127,11 +127,11 @@ This creates installers in `frontend/dist-electron/`:
 - Make sure all prerequisites are installed
 - Try running the manual setup steps one by one
 
-## 🔒 Security Note
+##  Security Note
 
 This application runs locally on your computer and does not send data to external servers. All processing happens on your machine.
 
-## 📞 Support
+##  Support
 
 If you encounter any issues:
 1. Check the troubleshooting section above
